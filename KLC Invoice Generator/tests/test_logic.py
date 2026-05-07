@@ -26,3 +26,32 @@ class TestSuggestPrefix:
 
     def test_exactly_four_chars(self):
         assert suggest_prefix("ABCD Extra") == "ABCD"
+
+
+class TestNextInvoiceNumber:
+    def test_no_prior_invoices_starts_at_001(self):
+        assert next_invoice_number([], "U") == "U001"
+
+    def test_single_prior_invoice_increments(self):
+        assert next_invoice_number(["Invoice U015"], "U") == "U016"
+
+    def test_multiple_picks_max(self):
+        files = ["Invoice U010", "Invoice U015", "Invoice U012"]
+        assert next_invoice_number(files, "U") == "U016"
+
+    def test_ignores_other_prefixes(self):
+        files = ["Invoice U015", "Invoice K003"]
+        assert next_invoice_number(files, "U") == "U016"
+
+    def test_case_insensitive_match(self):
+        assert next_invoice_number(["invoice u015"], "U") == "U016"
+
+    def test_pads_to_three_digits(self):
+        assert next_invoice_number(["Invoice U099"], "U") == "U100"
+
+    def test_prefix_in_number_part_not_matched(self):
+        # "Invoice UA001" should not match prefix "U"
+        assert next_invoice_number(["Invoice UA001"], "U") == "U001"
+
+    def test_four_char_prefix(self):
+        assert next_invoice_number(["Invoice KOOL003"], "KOOL") == "KOOL004"
