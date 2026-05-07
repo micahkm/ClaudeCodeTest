@@ -136,4 +136,40 @@ def export_pdf(creds, file_id: str, dest_path: str) -> None:
 
 
 def create_invoice(data: dict) -> tuple[str, str]:
-    raise NotImplementedError
+    """Main entry point called by app.py.
+
+    Returns (sheet_url, pdf_path).
+    Raises RuntimeError with a user-readable message on failure.
+    """
+    from logic import next_invoice_number
+
+    gc, drive, creds = authenticate()
+    prefix = data["prefix"]
+
+    existing = search_invoices(drive, prefix)
+    if existing:
+        source = existing[0]           # ordered name desc → highest number first
+        folder_id = source["parents"][0]
+    else:
+        template = search_template(drive)
+        if not template:
+            raise RuntimeError(
+                "No existing invoices found for this prefix and no "
+                "'Invoice TEMPLATE' found in Drive.\n\n"
+                "Create an 'Invoice TEMPLATE' spreadsheet in Drive first."
+            )
+        source = template
+        folder_id = template["parents"][0]
+
+    filenames = [f["name"] for f in existing]
+    invoice_num = next_invoice_number(filenames, prefix)
+    new_name = f"Invoice {invoice_num}"
+
+    new_id = copy_invoice(drive, source["id"], new_name, folder_id)
+    write_invoice_cells(gc, new_id, {**data, "invoice_number": invoice_num})
+
+    pdf_path = str(Path.home() / "Desktop" / f"{new_name}.pdf")
+    export_pdf(creds, new_id, pdf_path)
+
+    sheet_url = f"https://docs.google.com/spreadsheets/d/{new_id}"
+    return sheet_url, pdf_path
