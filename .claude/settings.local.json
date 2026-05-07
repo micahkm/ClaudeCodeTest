@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(open *)",
+      "Bash(git *)",
+      "Bash(gh *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(brew *)",
+      "Bash(/opt/homebrew/bin/brew *)",
+      "Bash(/opt/homebrew/bin/npm *)",
+      "Bash(/opt/homebrew/bin/npx *)",
+      "Bash(python3 *)",
+      "Bash(mkdir *)",
+      "Bash(cp *)",
+      "WebFetch(domain:www.koolaulasercreations.com)"
+    ]
+  }
+}
