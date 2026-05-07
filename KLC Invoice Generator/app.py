@@ -22,6 +22,8 @@ class InvoiceApp(tk.Tk):
         self.configure(bg=BG)
         self.resizable(False, False)
         self.line_items: list[dict] = []
+        self._prefix_user_edited = False
+        self._prefix_auto_set = False
         self._build_ui()
         self._reset_form()
 
@@ -44,6 +46,7 @@ class InvoiceApp(tk.Tk):
         self._field(info, "Project", self.project_var, 2)
         self._field(info, "Due Date (M/D/YYYY)", self.due_var, 3)
         self.company_var.trace_add("write", self._on_company_change)
+        self.prefix_var.trace_add("write", self._on_prefix_change)
 
         # Line Items
         self._section_label(outer, "Line Items")
@@ -108,12 +111,20 @@ class InvoiceApp(tk.Tk):
 
     # --------------------------------------------------------------- behavior
 
+    def _on_prefix_change(self, *_):
+        if not self._prefix_auto_set:
+            self._prefix_user_edited = True
+
     def _on_company_change(self, *_):
-        name = self.company_var.get().strip()
-        if not name:
+        if self._prefix_user_edited:
             return
-        first = name.split()[0].upper()[:4]
-        self.prefix_var.set(first)
+        name = self.company_var.get().strip()
+        self._prefix_auto_set = True
+        if not name:
+            self.prefix_var.set("")
+        else:
+            self.prefix_var.set(name.split()[0].upper()[:4])
+        self._prefix_auto_set = False
 
     def _add_item(self, desc: str = "", qty: str = "1",
                   price: str = "0.00", discount: bool = False):
@@ -178,12 +189,13 @@ class InvoiceApp(tk.Tk):
         self.total_label.config(text=f"Total: ${grand_total:.2f}")
 
     def _reset_form(self):
+        self._prefix_user_edited = False
+        self._prefix_auto_set = False
         self.company_var.set("")
         self.prefix_var.set("")
         self.project_var.set("")
-        self.due_var.set(
-            (date.today() + timedelta(days=30)).strftime("%-m/%-d/%Y")
-        )
+        d = date.today() + timedelta(days=30)
+        self.due_var.set(f"{d.month}/{d.day}/{d.year}")
         self.adj_var.set("0.00")
         for item in list(self.line_items):
             item["frame"].destroy()
@@ -207,6 +219,7 @@ class InvoiceApp(tk.Tk):
 
         items = []
         for item in self.line_items:
+            desc = item["desc"].get().strip()
             try:
                 qty = float(item["qty"].get())
                 price = float(item["price"].get())
@@ -214,12 +227,18 @@ class InvoiceApp(tk.Tk):
                 messagebox.showerror("Invalid Input",
                                       "Qty and Unit Price must be numbers.")
                 return None
+            if not desc:
+                continue
             items.append({
-                "desc": item["desc"].get(),
+                "desc": desc,
                 "qty": qty,
                 "price": price,
                 "total": round(qty * price, 2),
             })
+        if not items:
+            messagebox.showerror("Missing Items",
+                                  "At least one line item with a description is required.")
+            return None
 
         try:
             adj = float(self.adj_var.get())
@@ -227,14 +246,15 @@ class InvoiceApp(tk.Tk):
             adj = 0.0
 
         notes_raw = self.notes_text.get("1.0", "end-1c")
-        notes = [line for line in notes_raw.split("\n")[:3]]
+        notes = [line for line in notes_raw.split("\n") if line.strip()][:3]
 
+        d = date.today()
         return {
             "client_name": company,
             "prefix": prefix,
             "project": project,
             "due_date": due,
-            "date_submitted": date.today().strftime("%-m/%-d/%Y"),
+            "date_submitted": f"{d.month}/{d.day}/{d.year}",
             "line_items": items,
             "adjustments": adj,
             "notes": notes,
