@@ -192,7 +192,6 @@ class InvoiceApp(tk.Tk):
         self._prefix_user_edited = False
         self._prefix_auto_set = False
         self.company_var.set("")
-        self.prefix_var.set("")
         self.project_var.set("")
         d = date.today() + timedelta(days=30)
         self.due_var.set(f"{d.month}/{d.day}/{d.year}")

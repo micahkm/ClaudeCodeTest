@@ -30,6 +30,7 @@ LINE_ITEM_COL_QTY = "D"
 LINE_ITEM_COL_UNIT_PRICE = "E"
 LINE_ITEM_COL_TOTAL = "F"
 CLEAR_RANGE = "A7:F50"
+CELL_ADJUSTMENTS = "E40"
 
 
 def authenticate():
@@ -117,6 +118,9 @@ def write_invoice_cells(gc, sheet_id: str, data: dict) -> None:
     for j, line in enumerate(data.get("notes", [])[:3]):
         if line.strip():
             updates.append({"range": f"A{note_start + j}", "values": [[line]]})
+
+    if data.get("adjustments", 0) != 0:
+        updates.append({"range": CELL_ADJUSTMENTS, "values": [[data["adjustments"]]]})
 
     ws.batch_update(updates, value_input_option="USER_ENTERED")
 
