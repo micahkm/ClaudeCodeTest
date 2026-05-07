@@ -1,6 +1,6 @@
 """
 KLC Quote Calculator
-Koolau Laser Creations — quote generation tool with PDF export.
+Ko'olau Laser Creations — quote generation tool with PDF export.
 """
 
 import tkinter as tk
@@ -73,7 +73,7 @@ def export_pdf(filepath, customer_name, customer_email, job_description,
         fontSize=22,
         textColor=KLC_GREEN,
         fontName="Helvetica-Bold",
-        spaceAfter=2,
+        spaceAfter=36,
     )
     subheader_style = ParagraphStyle(
         "SubHeader",
@@ -118,7 +118,7 @@ def export_pdf(filepath, customer_name, customer_email, job_description,
         logo_cell = logo
 
     header_text = [
-        Paragraph("Koolau Laser Creations", header_style),
+        Paragraph("Ko'olau Laser Creations", header_style),
         Paragraph("3D Printing · Laser Cutting · Engraving · Design", subheader_style),
         Paragraph("Kaneohe, Oahu, Hawaii", subheader_style),
         Paragraph("koolaulasercreations@gmail.com", subheader_style),
@@ -129,7 +129,7 @@ def export_pdf(filepath, customer_name, customer_email, job_description,
         colWidths=[1.8 * inch, 5.2 * inch],
     )
     header_table.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (0, 0), 0),
         ("RIGHTPADDING", (0, 0), (0, 0), 12),
     ]))
@@ -202,7 +202,7 @@ def export_pdf(filepath, customer_name, customer_email, job_description,
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#CCCCCC"), spaceAfter=8))
     story.append(Paragraph(
         "This quote is valid for 30 days. Prices are estimates and may vary based on final design requirements. "
-        "Thank you for choosing Koolau Laser Creations!",
+        "Thank you for choosing Ko'olau Laser Creations!",
         footer_style,
     ))
 
@@ -230,7 +230,7 @@ class QuoteApp(tk.Tk):
         # Header banner
         banner = tk.Frame(self, bg=GREEN, pady=10)
         banner.pack(fill="x")
-        tk.Label(banner, text="Koolau Laser Creations",
+        tk.Label(banner, text="Ko'olau Laser Creations",
                  font=("Helvetica", 18, "bold"), bg=GREEN, fg="white").pack()
         tk.Label(banner, text="Quote Calculator",
                  font=("Helvetica", 11), bg=GREEN, fg="#A8C97A").pack()
@@ -240,13 +240,13 @@ class QuoteApp(tk.Tk):
 
         def section(parent, title):
             tk.Label(parent, text=title, font=("Helvetica", 11, "bold"),
-                     bg=BG, fg=GREEN).grid(row=section.row, column=0, columnspan=2,
-                                           sticky="w", pady=(12, 2))
+                     bg=BG, fg="#1A1A1A").grid(row=section.row, column=0, columnspan=2,
+                                               sticky="w", pady=(12, 2))
             section.row += 1
         section.row = 0
 
         def row(parent, label, default="0"):
-            tk.Label(parent, text=label, bg=BG, anchor="w",
+            tk.Label(parent, text=label, bg=BG, fg="#1A1A1A", anchor="w",
                      width=26).grid(row=section.row, column=0, sticky="w", pady=2)
             var = tk.StringVar(value=default)
             tk.Entry(parent, textvariable=var, width=18).grid(
@@ -255,7 +255,7 @@ class QuoteApp(tk.Tk):
             return var
 
         def text_row(parent, label):
-            tk.Label(parent, text=label, bg=BG, anchor="w",
+            tk.Label(parent, text=label, bg=BG, fg="#1A1A1A", anchor="w",
                      width=26).grid(row=section.row, column=0, sticky="nw", pady=2)
             t = tk.Text(parent, width=30, height=3, font=("Helvetica", 10))
             t.grid(row=section.row, column=1, sticky="w", padx=(8, 0))
