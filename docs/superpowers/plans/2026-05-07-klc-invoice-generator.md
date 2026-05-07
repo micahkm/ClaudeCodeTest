@@ -1,1007 +1,1126 @@
-# KLC Invoice Generator — Implementation Plan
+# KLC Invoice Generator Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a Python/tkinter desktop app that fills an invoice form, creates a new Google Sheets invoice in Drive (matching the existing U010–U015 format), exports it as a PDF to `~/Desktop`, and auto-opens it.
+**Goal:** Build a Python/tkinter desktop app that fills in a Google Sheets invoice from a form, saves it to Drive, and exports a PDF to the Desktop.
 
-**Architecture:** Pure-logic functions (prefix suggestion, invoice numbering) are unit-tested independently. A `sheets.py` module owns all Google API calls (auth, Drive search, sheet copy, cell write, PDF export). `app.py` contains only the tkinter UI and wires it to `sheets.py` on form submit.
+**Architecture:** `logic.py` holds pure functions (prefix suggestion, invoice numbering) that are unit-tested before anything else. `sheets.py` holds all Google API logic (auth, Drive copy, Sheets write, PDF export). `app.py` is the tkinter UI that calls `sheets.create_invoice(data)` on submit — it never touches Google APIs directly.
 
-**Tech Stack:** Python 3, tkinter (stdlib), gspread 6.x, google-auth-oauthlib, google-api-python-client
+**Tech Stack:** Python 3.11+, tkinter (stdlib), gspread 6.x, google-auth-oauthlib, google-api-python-client
 
 ---
 
 ## File Map
 
-| File | Responsibility |
-|---|---|
-| `KLC Invoice Generator/app.py` | tkinter GUI, form state, calls `sheets.py` on Generate |
-| `KLC Invoice Generator/sheets.py` | All Google API logic: auth, Drive search, copy, write, PDF export |
-| `KLC Invoice Generator/tests/test_logic.py` | Unit tests for pure logic functions |
-| `KLC Invoice Generator/requirements.txt` | Python dependencies |
-| `KLC Invoice Generator/SETUP.md` | One-time OAuth2 + template setup guide |
-| `KLC Invoice Generator/.gitignore` | Ignores `credentials.json` and `token.json` |
+| File | Action | Responsibility |
+|---|---|---|
+| `KLC Invoice Generator/logic.py` | Create | Pure functions: suggest_prefix, next_invoice_number |
+| `KLC Invoice Generator/sheets.py` | Create | All Google API logic |
+| `KLC Invoice Generator/app.py` | Create | tkinter UI |
+| `KLC Invoice Generator/tests/__init__.py` | Create | Empty, marks tests as package |
+| `KLC Invoice Generator/tests/test_logic.py` | Create | Unit tests for logic.py |
+| `KLC Invoice Generator/requirements.txt` | Create | Python dependencies |
+| `KLC Invoice Generator/.gitignore` | Create | Ignore token.json, credentials.json, __pycache__ |
+| `KLC Invoice Generator/SETUP.md` | Create | One-time user setup guide |
 
 ---
 
-### Task 1: Scaffold the project
+## Task 0: Git Cleanup
+
+**Files:** none (git operations only)
+
+- [ ] **Stage all pending deletes and commit**
+
+```bash
+cd "/Users/micahmiyashiro/Desktop/ClaudeCodeTest"
+git add -A
+git commit -m "chore: remove old KLC Invoice Generator implementation"
+```
+
+Expected output: commit hash with summary of deleted files.
+
+> Note: This removes files from the working tree. Old commits still exist in git history. If the user wants full history rewrite (`git filter-repo`), that requires a separate explicit request.
+
+---
+
+## Task 1: Scaffold
 
 **Files:**
 - Create: `KLC Invoice Generator/requirements.txt`
 - Create: `KLC Invoice Generator/.gitignore`
+- Create: `KLC Invoice Generator/logic.py` (stub)
 - Create: `KLC Invoice Generator/sheets.py` (stub)
 - Create: `KLC Invoice Generator/app.py` (stub)
 - Create: `KLC Invoice Generator/tests/__init__.py`
+- Create: `KLC Invoice Generator/tests/test_logic.py` (stub)
 
-- [ ] **Step 1: Create requirements.txt**
+- [ ] **Create the directory structure**
 
-Create `KLC Invoice Generator/requirements.txt`:
+```bash
+mkdir -p "/Users/micahmiyashiro/Desktop/ClaudeCodeTest/KLC Invoice Generator/tests"
+```
+
+- [ ] **Write `requirements.txt`**
+
 ```
 gspread>=6.0.0
 google-auth-oauthlib>=1.2.0
 google-api-python-client>=2.100.0
 ```
 
-- [ ] **Step 2: Create .gitignore**
+Save to: `KLC Invoice Generator/requirements.txt`
 
-Create `KLC Invoice Generator/.gitignore`:
+- [ ] **Write `.gitignore`**
+
 ```
-credentials.json
 token.json
+credentials.json
 __pycache__/
 *.pyc
+*.pyo
 .DS_Store
 ```
 
-- [ ] **Step 3: Create stub sheets.py**
+Save to: `KLC Invoice Generator/.gitignore`
 
-Create `KLC Invoice Generator/sheets.py`:
+- [ ] **Write stub `logic.py`**
+
 ```python
-"""Google Drive/Sheets API logic for KLC Invoice Generator."""
-import os
-import re
-import datetime
+def suggest_prefix(company_name: str) -> str:
+    raise NotImplementedError
 
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request, AuthorizedSession
-from googleapiclient.discovery import build
-import gspread
-
-SCOPES = [
-    'https://www.googleapis.com/auth/spreadsheets',
-    'https://www.googleapis.com/auth/drive',
-]
-
-CREDENTIALS_FILE = os.path.join(os.path.dirname(__file__), 'credentials.json')
-TOKEN_FILE       = os.path.join(os.path.dirname(__file__), 'token.json')
+def next_invoice_number(filenames: list[str], prefix: str) -> str:
+    raise NotImplementedError
 ```
 
-- [ ] **Step 4: Create stub app.py**
+Save to: `KLC Invoice Generator/logic.py`
 
-Create `KLC Invoice Generator/app.py`:
+- [ ] **Write stub `sheets.py`**
+
 ```python
-"""KLC Invoice Generator — tkinter UI."""
+def authenticate():
+    raise NotImplementedError
+
+def search_invoices(drive, prefix: str) -> list[dict]:
+    raise NotImplementedError
+
+def search_template(drive) -> dict | None:
+    raise NotImplementedError
+
+def copy_invoice(drive, source_id: str, new_name: str, folder_id: str) -> str:
+    raise NotImplementedError
+
+def write_invoice_cells(gc, sheet_id: str, data: dict) -> None:
+    raise NotImplementedError
+
+def export_pdf(creds, file_id: str, dest_path: str) -> None:
+    raise NotImplementedError
+
+def create_invoice(data: dict) -> tuple[str, str]:
+    raise NotImplementedError
+```
+
+Save to: `KLC Invoice Generator/sheets.py`
+
+- [ ] **Write stub `app.py`**
+
+```python
 import tkinter as tk
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     root = tk.Tk()
-    root.title('KLC Invoice Generator')
+    root.title("KLC Invoice Generator")
     root.mainloop()
 ```
 
-- [ ] **Step 5: Create tests directory**
+Save to: `KLC Invoice Generator/app.py`
 
-Create `KLC Invoice Generator/tests/__init__.py` as an empty file.
+- [ ] **Create empty `tests/__init__.py`**
 
-- [ ] **Step 6: Install dependencies**
+Empty file at: `KLC Invoice Generator/tests/__init__.py`
 
-```bash
-cd "KLC Invoice Generator" && pip install -r requirements.txt
+- [ ] **Write stub `tests/test_logic.py`**
+
+```python
+# tests filled in during Task 2 and Task 3
 ```
 
-Expected: all packages install without errors.
+Save to: `KLC Invoice Generator/tests/test_logic.py`
 
-- [ ] **Step 7: Commit**
+- [ ] **Install dependencies**
 
 ```bash
+cd "/Users/micahmiyashiro/Desktop/ClaudeCodeTest/KLC Invoice Generator"
+pip install -r requirements.txt
+```
+
+- [ ] **Commit scaffold**
+
+```bash
+cd "/Users/micahmiyashiro/Desktop/ClaudeCodeTest"
 git add "KLC Invoice Generator/"
-git commit -m "feat: scaffold KLC Invoice Generator"
+git commit -m "chore: scaffold KLC Invoice Generator"
 ```
 
 ---
 
-### Task 2: Pure logic — prefix suggestion and invoice numbering (TDD)
+## Task 2: suggest_prefix — TDD
 
 **Files:**
-- Modify: `KLC Invoice Generator/sheets.py`
-- Create: `KLC Invoice Generator/tests/test_logic.py`
+- Modify: `KLC Invoice Generator/tests/test_logic.py`
+- Modify: `KLC Invoice Generator/logic.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **Write the failing tests for suggest_prefix**
 
-Create `KLC Invoice Generator/tests/test_logic.py`:
+Replace `KLC Invoice Generator/tests/test_logic.py` with:
+
 ```python
 import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from sheets import suggest_prefix, next_invoice_number
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+import pytest
+from logic import suggest_prefix, next_invoice_number
 
 
 class TestSuggestPrefix:
-    def test_single_word(self):
-        assert suggest_prefix('Ukey') == 'UKEY'
+    def test_single_word_truncates_to_four(self):
+        assert suggest_prefix("Umauma") == "UMAU"
 
-    def test_first_word_only(self):
-        assert suggest_prefix('Ukey Creation') == 'UKEY'
+    def test_multi_word_uses_first_word(self):
+        assert suggest_prefix("Koolau Laser Creations") == "KOOL"
 
-    def test_max_four_chars(self):
-        assert suggest_prefix('Aloha Prints') == 'ALOH'
+    def test_short_name_no_padding(self):
+        assert suggest_prefix("AB") == "AB"
 
-    def test_pewa(self):
-        assert suggest_prefix('PEWA by Pono Potions') == 'PEWA'
+    def test_empty_string_returns_empty(self):
+        assert suggest_prefix("") == ""
 
-    def test_empty_string(self):
-        assert suggest_prefix('') == ''
+    def test_already_uppercase(self):
+        assert suggest_prefix("ACME Corp") == "ACME"
 
-    def test_three_char_word(self):
-        assert suggest_prefix('KLC Hawaii') == 'KLC'
+    def test_leading_whitespace_stripped(self):
+        assert suggest_prefix("  Umauma") == "UMAU"
 
-
-class TestNextInvoiceNumber:
-    def test_increments_from_existing(self):
-        titles = ['Invoice U013', 'Invoice U014', 'Invoice U015']
-        assert next_invoice_number(titles, 'U') == 'U016'
-
-    def test_starts_at_001_for_new_prefix(self):
-        assert next_invoice_number([], 'X') == 'X001'
-
-    def test_finds_max_not_last(self):
-        titles = ['Invoice U015', 'Invoice U012', 'Invoice U009']
-        assert next_invoice_number(titles, 'U') == 'U016'
-
-    def test_multi_char_prefix(self):
-        titles = ['Invoice PEWA001', 'Invoice PEWA002']
-        assert next_invoice_number(titles, 'PEWA') == 'PEWA003'
-
-    def test_ignores_other_prefixes(self):
-        titles = ['Invoice U015', 'Invoice PEWA002']
-        assert next_invoice_number(titles, 'U') == 'U016'
-
-    def test_zero_pads_to_three_digits(self):
-        assert next_invoice_number([], 'ABC') == 'ABC001'
+    def test_exactly_four_chars(self):
+        assert suggest_prefix("ABCD Extra") == "ABCD"
 ```
 
-- [ ] **Step 2: Run tests — expect failures**
+- [ ] **Run tests and confirm they fail**
 
 ```bash
-cd "KLC Invoice Generator" && python -m pytest tests/test_logic.py -v
+cd "/Users/micahmiyashiro/Desktop/ClaudeCodeTest"
+python -m pytest "KLC Invoice Generator/tests/test_logic.py::TestSuggestPrefix" -v
 ```
 
-Expected: `AttributeError: module 'sheets' has no attribute 'suggest_prefix'`
+Expected: `NotImplementedError` on all 7 tests — FAILED.
 
-- [ ] **Step 3: Implement the two functions in sheets.py**
+- [ ] **Implement suggest_prefix in logic.py**
 
-Add after the constants in `KLC Invoice Generator/sheets.py`:
 ```python
+import re
+
+
 def suggest_prefix(company_name: str) -> str:
-    """Return first word of company name, uppercased, max 4 chars."""
-    if not company_name.strip():
-        return ''
-    first_word = company_name.strip().split()[0]
-    return first_word.upper()[:4]
+    words = company_name.strip().split()
+    if not words:
+        return ""
+    return words[0].upper()[:4]
 
 
-def next_invoice_number(titles: list, prefix: str) -> str:
-    """Scan Drive file title list and return the next invoice number for prefix."""
-    pattern = re.compile(rf'^Invoice {re.escape(prefix)}(\d+)$', re.IGNORECASE)
-    numbers = [int(m.group(1)) for t in titles if (m := pattern.match(t.strip()))]
-    next_num = (max(numbers) + 1) if numbers else 1
-    return f'{prefix}{next_num:03d}'
+def next_invoice_number(filenames: list[str], prefix: str) -> str:
+    raise NotImplementedError
 ```
 
-- [ ] **Step 4: Run tests — expect all pass**
+- [ ] **Run tests and confirm they pass**
 
 ```bash
-cd "KLC Invoice Generator" && python -m pytest tests/test_logic.py -v
+cd "/Users/micahmiyashiro/Desktop/ClaudeCodeTest"
+python -m pytest "KLC Invoice Generator/tests/test_logic.py::TestSuggestPrefix" -v
 ```
 
-Expected: all 12 tests PASS.
+Expected: 7 PASSED.
 
-- [ ] **Step 5: Commit**
+- [ ] **Commit**
 
 ```bash
-git add "KLC Invoice Generator/sheets.py" "KLC Invoice Generator/tests/test_logic.py"
-git commit -m "feat: add invoice numbering and prefix suggestion logic"
+cd "/Users/micahmiyashiro/Desktop/ClaudeCodeTest"
+git add "KLC Invoice Generator/logic.py" "KLC Invoice Generator/tests/test_logic.py"
+git commit -m "feat: implement suggest_prefix with tests"
 ```
 
 ---
 
-### Task 3: Google Auth
+## Task 3: next_invoice_number — TDD
+
+**Files:**
+- Modify: `KLC Invoice Generator/tests/test_logic.py`
+- Modify: `KLC Invoice Generator/logic.py`
+
+- [ ] **Append the failing tests for next_invoice_number**
+
+Add to `KLC Invoice Generator/tests/test_logic.py` (after `TestSuggestPrefix`):
+
+```python
+class TestNextInvoiceNumber:
+    def test_no_prior_invoices_starts_at_001(self):
+        assert next_invoice_number([], "U") == "U001"
+
+    def test_single_prior_invoice_increments(self):
+        assert next_invoice_number(["Invoice U015"], "U") == "U016"
+
+    def test_multiple_picks_max(self):
+        files = ["Invoice U010", "Invoice U015", "Invoice U012"]
+        assert next_invoice_number(files, "U") == "U016"
+
+    def test_ignores_other_prefixes(self):
+        files = ["Invoice U015", "Invoice K003"]
+        assert next_invoice_number(files, "U") == "U016"
+
+    def test_case_insensitive_match(self):
+        assert next_invoice_number(["invoice u015"], "U") == "U016"
+
+    def test_pads_to_three_digits(self):
+        assert next_invoice_number(["Invoice U099"], "U") == "U100"
+
+    def test_prefix_in_number_part_not_matched(self):
+        # "Invoice UA001" should not match prefix "U"
+        assert next_invoice_number(["Invoice UA001"], "U") == "U001"
+
+    def test_four_char_prefix(self):
+        assert next_invoice_number(["Invoice KOOL003"], "KOOL") == "KOOL004"
+```
+
+- [ ] **Run tests and confirm new ones fail**
+
+```bash
+cd "/Users/micahmiyashiro/Desktop/ClaudeCodeTest"
+python -m pytest "KLC Invoice Generator/tests/test_logic.py::TestNextInvoiceNumber" -v
+```
+
+Expected: `NotImplementedError` — all 8 FAILED.
+
+- [ ] **Implement next_invoice_number in logic.py**
+
+Replace `KLC Invoice Generator/logic.py` with:
+
+```python
+import re
+
+
+def suggest_prefix(company_name: str) -> str:
+    words = company_name.strip().split()
+    if not words:
+        return ""
+    return words[0].upper()[:4]
+
+
+def next_invoice_number(filenames: list[str], prefix: str) -> str:
+    pattern = re.compile(
+        rf'^Invoice {re.escape(prefix)}(\d+)$', re.IGNORECASE
+    )
+    numbers = []
+    for name in filenames:
+        m = pattern.match(name.strip())
+        if m:
+            numbers.append(int(m.group(1)))
+    next_num = (max(numbers) + 1) if numbers else 1
+    return f"{prefix}{next_num:03d}"
+```
+
+- [ ] **Run all logic tests and confirm all pass**
+
+```bash
+cd "/Users/micahmiyashiro/Desktop/ClaudeCodeTest"
+python -m pytest "KLC Invoice Generator/tests/" -v
+```
+
+Expected: 15 PASSED (7 + 8).
+
+- [ ] **Commit**
+
+```bash
+cd "/Users/micahmiyashiro/Desktop/ClaudeCodeTest"
+git add "KLC Invoice Generator/logic.py" "KLC Invoice Generator/tests/test_logic.py"
+git commit -m "feat: implement next_invoice_number with tests"
+```
+
+---
+
+## Task 4: Google Auth + Drive Search
 
 **Files:**
 - Modify: `KLC Invoice Generator/sheets.py`
 
-- [ ] **Step 1: Add get_credentials() and get_clients() to sheets.py**
+> **Prerequisite:** `credentials.json` must be in `KLC Invoice Generator/` before manual testing. See `SETUP.md` (written in Task 9) for how to obtain it.
 
-Add after `next_invoice_number()` in `KLC Invoice Generator/sheets.py`:
+- [ ] **Replace sheets.py with auth + search implementation**
+
 ```python
-def get_credentials() -> Credentials:
-    """Load or refresh OAuth2 credentials; opens browser on first run."""
+import os
+import re
+import subprocess
+from pathlib import Path
+
+import gspread
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+from googleapiclient.discovery import build
+
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive",
+]
+
+_DIR = Path(__file__).parent
+TOKEN_PATH = _DIR / "token.json"
+CREDS_PATH = _DIR / "credentials.json"
+
+# Cell positions — verified against actual invoice template
+CELL_DATE_SUBMITTED = "A7"
+CELL_CLIENT_NAME = "A9"
+CELL_INVOICE_NUMBER = "E9"
+CELL_PROJECT = "A11"
+CELL_DUE_DATE = "C11"
+LINE_ITEM_START_ROW = 13
+LINE_ITEM_COL_DESC = "A"
+LINE_ITEM_COL_QTY = "D"
+LINE_ITEM_COL_UNIT_PRICE = "E"
+LINE_ITEM_COL_TOTAL = "F"
+CLEAR_RANGE = "A7:F50"
+
+
+def authenticate():
+    """Returns (gspread.Client, drive_service, creds). Opens browser on first run."""
     creds = None
-    if os.path.exists(TOKEN_FILE):
-        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+    if TOKEN_PATH.exists():
+        creds = Credentials.from_authorized_user_file(str(TOKEN_PATH), SCOPES)
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            if not os.path.exists(CREDENTIALS_FILE):
-                raise FileNotFoundError(
-                    f'credentials.json not found at {CREDENTIALS_FILE}\n'
-                    'See SETUP.md for instructions.'
-                )
-            flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
+            flow = InstalledAppFlow.from_client_secrets_file(str(CREDS_PATH), SCOPES)
             creds = flow.run_local_server(port=0)
-        with open(TOKEN_FILE, 'w') as f:
-            f.write(creds.to_json())
-    return creds
+        TOKEN_PATH.write_text(creds.to_json())
+    gc = gspread.authorize(creds)
+    drive = build("drive", "v3", credentials=creds)
+    return gc, drive, creds
 
 
-def get_clients(creds: Credentials):
-    """Return (gspread_client, drive_service) built from credentials."""
-    gc    = gspread.authorize(creds)
-    drive = build('drive', 'v3', credentials=creds)
-    return gc, drive
+def search_invoices(drive, prefix: str) -> list[dict]:
+    """Returns Drive file dicts matching 'Invoice <PREFIX>NNN', ordered name desc."""
+    query = (
+        f"name contains 'Invoice {prefix}' "
+        "and mimeType='application/vnd.google-apps.spreadsheet' "
+        "and trashed=false"
+    )
+    result = drive.files().list(
+        q=query,
+        fields="files(id, name, parents)",
+        orderBy="name desc",
+    ).execute()
+    files = result.get("files", [])
+    pattern = re.compile(rf'^Invoice {re.escape(prefix)}\d+$', re.IGNORECASE)
+    return [f for f in files if pattern.match(f["name"].strip())]
+
+
+def search_template(drive) -> dict | None:
+    """Returns the 'Invoice TEMPLATE' Drive file dict, or None if not found."""
+    query = (
+        "name = 'Invoice TEMPLATE' "
+        "and mimeType='application/vnd.google-apps.spreadsheet' "
+        "and trashed=false"
+    )
+    result = drive.files().list(q=query, fields="files(id, name, parents)").execute()
+    files = result.get("files", [])
+    return files[0] if files else None
+
+
+def copy_invoice(drive, source_id: str, new_name: str, folder_id: str) -> str:
+    raise NotImplementedError
+
+
+def write_invoice_cells(gc, sheet_id: str, data: dict) -> None:
+    raise NotImplementedError
+
+
+def export_pdf(creds, file_id: str, dest_path: str) -> None:
+    raise NotImplementedError
+
+
+def create_invoice(data: dict) -> tuple[str, str]:
+    raise NotImplementedError
 ```
 
-- [ ] **Step 2: Smoke-test auth manually**
-
-Add a temporary block at the bottom of `sheets.py` to verify auth works, then remove it after confirming:
-```python
-if __name__ == '__main__':
-    creds = get_credentials()
-    gc, drive = get_clients(creds)
-    print('Auth OK:', creds.valid)
-```
-
-Run: `cd "KLC Invoice Generator" && python sheets.py`
-
-Expected: browser opens for Google consent on first run (sign in as koolaulasercreations@gmail.com, grant access), then prints `Auth OK: True`. `token.json` appears in the folder.
-
-Remove the `if __name__ == '__main__':` block after confirming.
-
-- [ ] **Step 3: Commit**
+- [ ] **Manual smoke test (requires credentials.json)**
 
 ```bash
+cd "/Users/micahmiyashiro/Desktop/ClaudeCodeTest/KLC Invoice Generator"
+python - <<'EOF'
+import sheets
+gc, drive, creds = sheets.authenticate()
+print("Auth OK")
+results = sheets.search_invoices(drive, "U")
+print(f"Found {len(results)} invoices matching prefix U:")
+for f in results:
+    print(f"  {f['name']} ({f['id']})")
+template = sheets.search_template(drive)
+print(f"Template: {template['name'] if template else 'NOT FOUND'}")
+EOF
+```
+
+Expected: "Auth OK", list of matching Drive files, and template found.
+
+- [ ] **Commit**
+
+```bash
+cd "/Users/micahmiyashiro/Desktop/ClaudeCodeTest"
 git add "KLC Invoice Generator/sheets.py"
-git commit -m "feat: add OAuth2 auth flow"
+git commit -m "feat: add Google auth and Drive search"
 ```
 
 ---
 
-### Task 4: Drive search — find existing invoices and source file
+## Task 5: Sheet Copy + Cell Write
 
 **Files:**
 - Modify: `KLC Invoice Generator/sheets.py`
 
-- [ ] **Step 1: Add Drive search functions to sheets.py**
+- [ ] **Replace copy_invoice and write_invoice_cells stubs with implementations**
 
-Add after `get_clients()` in `KLC Invoice Generator/sheets.py`:
+In `KLC Invoice Generator/sheets.py`, replace the two `raise NotImplementedError` stubs for `copy_invoice` and `write_invoice_cells`:
+
 ```python
-def get_all_invoice_titles(drive) -> list:
-    """Return all Google Sheet titles that contain 'Invoice' (for numbering lookup)."""
-    resp = drive.files().list(
-        q="name contains 'Invoice' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false",
-        fields='files(name)',
-        pageSize=200,
-    ).execute()
-    return [f['name'] for f in resp.get('files', [])]
+def copy_invoice(drive, source_id: str, new_name: str, folder_id: str) -> str:
+    """Copies a Drive file into the same folder. Returns the new file's ID."""
+    body = {"name": new_name, "parents": [folder_id]}
+    new_file = drive.files().copy(fileId=source_id, body=body).execute()
+    return new_file["id"]
 
 
-def find_source_file(drive, prefix: str):
-    """Return (file_id, parent_folder_id) of highest-numbered invoice for prefix.
-    Falls back to 'Invoice TEMPLATE' if no prior invoices exist for this prefix."""
-    resp = drive.files().list(
-        q=f"name contains 'Invoice {prefix}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false",
-        fields='files(id, name, parents)',
-        pageSize=200,
-    ).execute()
-    files = resp.get('files', [])
+def write_invoice_cells(gc, sheet_id: str, data: dict) -> None:
+    """Batch-clears data range and writes all invoice fields.
 
-    pattern = re.compile(rf'^Invoice {re.escape(prefix)}(\d+)$', re.IGNORECASE)
-    numbered = []
-    for f in files:
-        m = pattern.match(f['name'].strip())
-        if m:
-            numbered.append((int(m.group(1)), f['id'], (f.get('parents') or [None])[0]))
-
-    if numbered:
-        numbered.sort(reverse=True)
-        _, file_id, parent_id = numbered[0]
-        return file_id, parent_id
-
-    # No prior invoices for this prefix — fall back to master template
-    tmpl = drive.files().list(
-        q="name = 'Invoice TEMPLATE' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false",
-        fields='files(id, parents)',
-    ).execute().get('files', [])
-    if not tmpl:
-        raise FileNotFoundError(
-            "No existing invoices found for this prefix and no 'Invoice TEMPLATE' found in Drive.\n"
-            "See SETUP.md for template setup instructions."
-        )
-    return tmpl[0]['id'], (tmpl[0].get('parents') or [None])[0]
-```
-
-- [ ] **Step 2: Smoke-test Drive search**
-
-Add temporary `__main__` block:
-```python
-if __name__ == '__main__':
-    creds = get_credentials()
-    gc, drive = get_clients(creds)
-    titles = get_all_invoice_titles(drive)
-    print('All invoice titles:', titles)
-    fid, parent = find_source_file(drive, 'U')
-    print(f'Source for U: file_id={fid}  parent={parent}')
-```
-
-Run: `cd "KLC Invoice Generator" && python sheets.py`
-
-Expected: prints list of invoice titles including `Invoice U015`, followed by the file ID and parent folder ID for U. Remove `__main__` block after confirming.
-
-- [ ] **Step 3: Commit**
-
-```bash
-git add "KLC Invoice Generator/sheets.py"
-git commit -m "feat: add Drive search for invoice source files"
-```
-
----
-
-### Task 5: Map cell positions in the invoice template
-
-Before writing cell data we need to confirm the exact row/column positions of the dynamic fields. This is a one-time discovery step — no permanent code output, just constants to record.
-
-**Files:**
-- Modify: `KLC Invoice Generator/sheets.py` (add constants)
-
-- [ ] **Step 1: Run cell inspection script**
-
-Add temporary `__main__` block:
-```python
-if __name__ == '__main__':
-    creds = get_credentials()
-    gc, drive = get_clients(creds)
-    # Invoice U015 — most recent known-good invoice
-    sh = gc.open_by_key('1AK_9hCRRZC16GfZPOG4mZP-hmEbW0rRMh06bxKX3zt0')
-    ws = sh.sheet1
-    for i, row in enumerate(ws.get_all_values(), start=1):
-        if any(c.strip() for c in row):
-            print(f'Row {i:02d}: {row}')
-```
-
-Run: `cd "KLC Invoice Generator" && python sheets.py`
-
-Read the output carefully. You need the row numbers for:
-- Submitted date line (e.g. "Submitted on 4/20/2026")
-- Client name (e.g. "Ukey Creation")
-- Invoice number (e.g. "U015")
-- Project name
-- Due date
-- First line item row
-- Column index (0-based from the list, A=0, B=1, C=2, D=3, E=4, F=5) for Qty, Unit Price, Total, Subtotal label/value
-
-Remove `__main__` block after recording.
-
-- [ ] **Step 2: Add cell constants to sheets.py**
-
-Add after the `SCOPES` / `TOKEN_FILE` constants block, adjusting any addresses that differ from the inspection output:
-```python
-# ── Cell position constants (verified against Invoice U015) ──────────────────
-SUBMITTED_DATE_CELL  = 'A7'
-CLIENT_NAME_CELL     = 'A9'
-INVOICE_NUM_CELL     = 'E9'
-PROJECT_CELL         = 'A11'
-DUE_DATE_CELL        = 'C11'
-LINE_ITEMS_START_ROW = 13
-LINE_ITEM_DESC_COL   = 'A'
-LINE_ITEM_QTY_COL    = 'D'
-LINE_ITEM_PRICE_COL  = 'E'
-LINE_ITEM_TOTAL_COL  = 'F'
-SUBTOTAL_LABEL_COL   = 'E'
-SUBTOTAL_VALUE_COL   = 'F'
-NOTES_COL            = 'A'
-CLEAR_RANGE          = 'A7:F50'
-```
-
-- [ ] **Step 3: Commit**
-
-```bash
-git add "KLC Invoice Generator/sheets.py"
-git commit -m "feat: add verified cell position constants"
-```
-
----
-
-### Task 6: Sheet copy and cell write
-
-**Files:**
-- Modify: `KLC Invoice Generator/sheets.py`
-
-- [ ] **Step 1: Add create_invoice_sheet() to sheets.py**
-
-Add after `find_source_file()`:
-```python
-def create_invoice_sheet(drive, gc, form_data: dict) -> str:
-    """Copy source invoice, write form data into it, return new spreadsheet ID.
-
-    form_data keys:
-        company_name  str
-        prefix        str
-        project       str
-        due_date      str  (M/D/YYYY)
-        items         list of {'description': str, 'qty': float,
-                               'unit_price': float, 'total': float}
-        adjustments   float
-        notes         str
-        invoice_number str  (e.g. 'U016')
+    data keys: client_name (str), invoice_number (str), project (str),
+               due_date (str), date_submitted (str),
+               line_items (list of {desc: str, qty: float, price: float, total: float}),
+               notes (list[str], up to 3 elements), adjustments (float)
     """
-    prefix         = form_data['prefix']
-    invoice_number = form_data['invoice_number']
-
-    source_id, parent_id = find_source_file(drive, prefix)
-
-    copy_body = {'name': f'Invoice {invoice_number}'}
-    if parent_id:
-        copy_body['parents'] = [parent_id]
-    new_file = drive.files().copy(fileId=source_id, body=copy_body).execute()
-    new_id   = new_file['id']
-
-    sh = gc.open_by_key(new_id)
-    ws = sh.sheet1
-
+    ws = gc.open_by_key(sheet_id).sheet1
     ws.batch_clear([CLEAR_RANGE])
 
-    today   = datetime.date.today().strftime('%-m/%-d/%Y')
-    items   = form_data['items']
-    subtotal = round(sum(item['total'] for item in items), 2)
-    adj      = form_data['adjustments']
-    total    = round(subtotal + adj, 2)
-
     updates = [
-        {'range': SUBMITTED_DATE_CELL, 'values': [[f"Submitted on {today}"]]},
-        {'range': CLIENT_NAME_CELL,    'values': [[form_data['company_name']]]},
-        {'range': INVOICE_NUM_CELL,    'values': [[invoice_number]]},
-        {'range': PROJECT_CELL,        'values': [[form_data['project']]]},
-        {'range': DUE_DATE_CELL,       'values': [[form_data['due_date']]]},
+        {"range": CELL_DATE_SUBMITTED, "values": [[data["date_submitted"]]]},
+        {"range": CELL_CLIENT_NAME,    "values": [[data["client_name"]]]},
+        {"range": CELL_INVOICE_NUMBER, "values": [[data["invoice_number"]]]},
+        {"range": CELL_PROJECT,        "values": [[data["project"]]]},
+        {"range": CELL_DUE_DATE,       "values": [[data["due_date"]]]},
     ]
 
-    for i, item in enumerate(items):
-        r = LINE_ITEMS_START_ROW + i
+    for i, item in enumerate(data["line_items"]):
+        row = LINE_ITEM_START_ROW + i
         updates += [
-            {'range': f'{LINE_ITEM_DESC_COL}{r}',  'values': [[item['description']]]},
-            {'range': f'{LINE_ITEM_QTY_COL}{r}',   'values': [[item['qty']]]},
-            {'range': f'{LINE_ITEM_PRICE_COL}{r}', 'values': [[item['unit_price']]]},
-            {'range': f'{LINE_ITEM_TOTAL_COL}{r}', 'values': [[item['total']]]},
+            {"range": f"{LINE_ITEM_COL_DESC}{row}",       "values": [[item["desc"]]]},
+            {"range": f"{LINE_ITEM_COL_QTY}{row}",        "values": [[item["qty"]]]},
+            {"range": f"{LINE_ITEM_COL_UNIT_PRICE}{row}", "values": [[item["price"]]]},
+            {"range": f"{LINE_ITEM_COL_TOTAL}{row}",      "values": [[item["total"]]]},
         ]
 
-    sr = LINE_ITEMS_START_ROW + len(items)
-    updates += [
-        {'range': f'{SUBTOTAL_LABEL_COL}{sr}',     'values': [['Subtotal']]},
-        {'range': f'{SUBTOTAL_VALUE_COL}{sr}',     'values': [[f'${subtotal:,.2f}']]},
-        {'range': f'{SUBTOTAL_LABEL_COL}{sr + 1}', 'values': [['Adjustments']]},
-        {'range': f'{SUBTOTAL_VALUE_COL}{sr + 1}', 'values': [[f'${adj:,.2f}']]},
-        {'range': f'{SUBTOTAL_VALUE_COL}{sr + 2}', 'values': [[f'${total:,.2f}']]},
-    ]
+    note_start = LINE_ITEM_START_ROW + len(data["line_items"]) + 2
+    for j, line in enumerate(data.get("notes", [])[:3]):
+        if line.strip():
+            updates.append({"range": f"A{note_start + j}", "values": [[line]]})
 
-    note_lines = (form_data['notes'] or '').strip().split('\n')[:3]
-    for j, line in enumerate(note_lines):
-        updates.append({'range': f'{NOTES_COL}{sr + j}', 'values': [[line]]})
-
-    ws.batch_update(updates, value_input_option='USER_ENTERED')
-    return new_id
+    ws.batch_update(updates, value_input_option="USER_ENTERED")
 ```
 
-- [ ] **Step 2: Smoke-test with a real invoice**
-
-Add temporary `__main__` block:
-```python
-if __name__ == '__main__':
-    creds  = get_credentials()
-    gc, drive = get_clients(creds)
-    titles = get_all_invoice_titles(drive)
-    inv_num = next_invoice_number(titles, 'U')
-    form_data = {
-        'company_name':   'Ukey Creation',
-        'prefix':         'U',
-        'project':        'Test Invoice — delete me',
-        'due_date':       '6/6/2026',
-        'items': [
-            {'description': 'Test Item', 'qty': 2, 'unit_price': 5.00, 'total': 10.00},
-            {'description': 'Discount',  'qty': 2, 'unit_price': -1.00, 'total': -2.00},
-        ],
-        'adjustments':    0.0,
-        'notes':          'This is a smoke test.',
-        'invoice_number': inv_num,
-    }
-    new_id = create_invoice_sheet(drive, gc, form_data)
-    print(f'Created: https://docs.google.com/spreadsheets/d/{new_id}')
-```
-
-Run: `cd "KLC Invoice Generator" && python sheets.py`
-
-Open the printed URL. Verify: invoice number, client name, project, line items, subtotal, and total are correct. **Delete the test file from Drive after confirming.** Remove `__main__` block.
-
-- [ ] **Step 3: Commit**
+- [ ] **Manual test: copy + write (requires credentials.json and a real invoice in Drive)**
 
 ```bash
+cd "/Users/micahmiyashiro/Desktop/ClaudeCodeTest/KLC Invoice Generator"
+python - <<'EOF'
+import sheets
+
+gc, drive, creds = sheets.authenticate()
+existing = sheets.search_invoices(drive, "U")
+if not existing:
+    print("No existing U-prefix invoices found — run this after Task 4 smoke test passes")
+else:
+    source = existing[0]
+    folder_id = source["parents"][0]
+    new_id = sheets.copy_invoice(drive, source["id"], "Invoice TEST_DELETE_ME", folder_id)
+    print(f"Copied to: https://docs.google.com/spreadsheets/d/{new_id}")
+
+    test_data = {
+        "client_name": "Test Client",
+        "invoice_number": "TEST001",
+        "project": "Test Project",
+        "due_date": "6/6/2026",
+        "date_submitted": "5/7/2026",
+        "line_items": [
+            {"desc": "Design Work", "qty": 2, "price": 150.0, "total": 300.0},
+            {"desc": "Revisions",   "qty": 1, "price": 50.0,  "total": 50.0},
+        ],
+        "notes": ["Thank you for your business!"],
+        "adjustments": 0.0,
+    }
+    sheets.write_invoice_cells(gc, new_id, test_data)
+    print("Cells written. Open the sheet above to verify layout.")
+    print("Delete 'Invoice TEST_DELETE_ME' from Drive when done.")
+EOF
+```
+
+Expected: URL printed. Open it and confirm all cells are in the right positions.
+
+> **If cell positions are wrong:** Update the constants at the top of `sheets.py` (`CELL_DATE_SUBMITTED`, `LINE_ITEM_START_ROW`, etc.) to match the actual template layout, then re-run.
+
+- [ ] **Commit**
+
+```bash
+cd "/Users/micahmiyashiro/Desktop/ClaudeCodeTest"
 git add "KLC Invoice Generator/sheets.py"
-git commit -m "feat: add create_invoice_sheet with cell write"
+git commit -m "feat: add sheet copy and cell write"
 ```
 
 ---
 
-### Task 7: PDF export to Desktop
+## Task 6: PDF Export
 
 **Files:**
 - Modify: `KLC Invoice Generator/sheets.py`
 
-- [ ] **Step 1: Add export_to_pdf() to sheets.py**
+- [ ] **Replace export_pdf stub with implementation**
 
-Add after `create_invoice_sheet()`:
+In `KLC Invoice Generator/sheets.py`, replace the `export_pdf` stub:
+
 ```python
-def export_to_pdf(creds: Credentials, spreadsheet_id: str, invoice_number: str) -> str:
-    """Export spreadsheet as PDF to ~/Desktop; return the saved file path."""
-    desktop  = os.path.expanduser('~/Desktop')
-    pdf_path = os.path.join(desktop, f'Invoice {invoice_number}.pdf')
-
+def export_pdf(creds, file_id: str, dest_path: str) -> None:
+    """Exports a Google Sheet as PDF, saves to dest_path, and opens it."""
+    from google.auth.transport.requests import AuthorizedSession
     url = (
-        f'https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export'
-        f'?format=pdf&size=letter&portrait=true&fitw=true&gridlines=false'
+        f"https://docs.google.com/spreadsheets/d/{file_id}/export"
+        "?format=pdf&size=letter&portrait=true&fitw=true&gridlines=false"
     )
-    session  = AuthorizedSession(creds)
-    response = session.get(url)
-    response.raise_for_status()
-
-    with open(pdf_path, 'wb') as f:
-        f.write(response.content)
-
-    return pdf_path
+    session = AuthorizedSession(creds)
+    r = session.get(url)
+    r.raise_for_status()
+    Path(dest_path).write_bytes(r.content)
+    subprocess.run(["open", dest_path], check=True)
 ```
 
-- [ ] **Step 2: Smoke-test PDF export**
-
-Create a fresh test invoice using the smoke test from Task 6, note its spreadsheet ID, then add:
-```python
-if __name__ == '__main__':
-    creds = get_credentials()
-    # Replace with the ID of a test invoice you just created
-    test_id = 'PASTE_SPREADSHEET_ID_HERE'
-    path = export_to_pdf(creds, test_id, 'UTEST')
-    print(f'PDF saved to: {path}')
-    import os; os.system(f'open "{path}"')
-```
-
-Run: `cd "KLC Invoice Generator" && python sheets.py`
-
-Expected: PDF opens on Desktop. Verify it looks like a clean invoice. Delete the test PDF and test Sheet from Drive. Remove `__main__` block.
-
-- [ ] **Step 3: Commit**
+- [ ] **Manual test: export PDF (requires a test sheet ID from Task 5)**
 
 ```bash
+cd "/Users/micahmiyashiro/Desktop/ClaudeCodeTest/KLC Invoice Generator"
+python - <<'EOF'
+import sheets
+from pathlib import Path
+
+gc, drive, creds = sheets.authenticate()
+# Replace with the sheet ID from the TEST_DELETE_ME copy made in Task 5
+TEST_SHEET_ID = "PASTE_SHEET_ID_HERE"
+dest = str(Path.home() / "Desktop" / "Invoice_TEST.pdf")
+sheets.export_pdf(creds, TEST_SHEET_ID, dest)
+print(f"PDF exported to: {dest}")
+EOF
+```
+
+Expected: PDF appears on Desktop and opens automatically in Preview.
+
+- [ ] **Commit**
+
+```bash
+cd "/Users/micahmiyashiro/Desktop/ClaudeCodeTest"
 git add "KLC Invoice Generator/sheets.py"
 git commit -m "feat: add PDF export to Desktop"
 ```
 
 ---
 
-### Task 8: Full tkinter UI
+## Task 7: create_invoice Orchestrator
+
+**Files:**
+- Modify: `KLC Invoice Generator/sheets.py`
+
+- [ ] **Replace create_invoice stub with full orchestration**
+
+In `KLC Invoice Generator/sheets.py`, replace the `create_invoice` stub:
+
+```python
+def create_invoice(data: dict) -> tuple[str, str]:
+    """Main entry point called by app.py.
+
+    Returns (sheet_url, pdf_path).
+    Raises RuntimeError with a user-readable message on failure.
+    """
+    from logic import next_invoice_number
+
+    gc, drive, creds = authenticate()
+    prefix = data["prefix"]
+
+    existing = search_invoices(drive, prefix)
+    if existing:
+        source = existing[0]           # ordered name desc → highest number first
+        folder_id = source["parents"][0]
+    else:
+        template = search_template(drive)
+        if not template:
+            raise RuntimeError(
+                "No existing invoices found for this prefix and no "
+                "'Invoice TEMPLATE' found in Drive.\n\n"
+                "Create an 'Invoice TEMPLATE' spreadsheet in Drive first."
+            )
+        source = template
+        folder_id = template["parents"][0]
+
+    filenames = [f["name"] for f in existing]
+    invoice_num = next_invoice_number(filenames, prefix)
+    new_name = f"Invoice {invoice_num}"
+
+    new_id = copy_invoice(drive, source["id"], new_name, folder_id)
+    write_invoice_cells(gc, new_id, {**data, "invoice_number": invoice_num})
+
+    pdf_path = str(Path.home() / "Desktop" / f"{new_name}.pdf")
+    export_pdf(creds, new_id, pdf_path)
+
+    sheet_url = f"https://docs.google.com/spreadsheets/d/{new_id}"
+    return sheet_url, pdf_path
+```
+
+- [ ] **Run all unit tests to confirm no regressions**
+
+```bash
+cd "/Users/micahmiyashiro/Desktop/ClaudeCodeTest"
+python -m pytest "KLC Invoice Generator/tests/" -v
+```
+
+Expected: 15 PASSED.
+
+- [ ] **Commit**
+
+```bash
+cd "/Users/micahmiyashiro/Desktop/ClaudeCodeTest"
+git add "KLC Invoice Generator/sheets.py"
+git commit -m "feat: add create_invoice orchestrator"
+```
+
+---
+
+## Task 8: Full tkinter UI
 
 **Files:**
 - Modify: `KLC Invoice Generator/app.py`
 
-- [ ] **Step 1: Replace app.py with the full UI**
+- [ ] **Replace app.py with full implementation**
 
-Replace the entire contents of `KLC Invoice Generator/app.py` with:
 ```python
-"""KLC Invoice Generator — tkinter UI."""
 import tkinter as tk
 from tkinter import messagebox
-import datetime
-import os
+from datetime import date, timedelta
+import threading
 
-import sheets
-
-BG    = '#F5F0E8'
-GREEN = '#2D5016'
-BROWN = '#6B4226'
-RED   = '#CC3333'
-WHITE = '#FFFFFF'
-LIGHT = '#E8E0D0'
-
-
-class LineItemRow:
-    def __init__(self, frame, on_change, on_delete):
-        self.frame = tk.Frame(frame, bg=BG)
-        self.frame.pack(fill='x', pady=1)
-
-        self.desc_var  = tk.StringVar()
-        self.qty_var   = tk.StringVar(value='1')
-        self.price_var = tk.StringVar(value='0.00')
-        self.total_var = tk.StringVar(value='$0.00')
-
-        for v in (self.desc_var, self.qty_var, self.price_var):
-            v.trace_add('write', lambda *_: on_change())
-
-        tk.Entry(self.frame, textvariable=self.desc_var,  width=32,
-                 font=('Helvetica', 10)).pack(side='left', padx=(0, 4))
-        tk.Entry(self.frame, textvariable=self.qty_var,   width=6,
-                 font=('Helvetica', 10)).pack(side='left', padx=(0, 4))
-        tk.Entry(self.frame, textvariable=self.price_var, width=9,
-                 font=('Helvetica', 10)).pack(side='left', padx=(0, 4))
-        tk.Label(self.frame, textvariable=self.total_var, width=10,
-                 bg=LIGHT, font=('Helvetica', 10), anchor='e').pack(side='left', padx=(0, 4))
-        tk.Button(self.frame, text='✕', bg=BG, fg=RED, font=('Helvetica', 9),
-                  relief='flat', cursor='hand2',
-                  command=on_delete).pack(side='left')
-
-    def get_item(self):
-        try:
-            qty   = float(self.qty_var.get())
-            price = float(self.price_var.get())
-        except ValueError:
-            qty, price = 0.0, 0.0
-        total = round(qty * price, 2)
-        self.total_var.set(f'${total:,.2f}')
-        return {
-            'description': self.desc_var.get().strip(),
-            'qty':         qty,
-            'unit_price':  price,
-            'total':       total,
-        }
-
-    def destroy(self):
-        self.frame.destroy()
+BG = "#F5F0E8"
+PRIMARY = "#2D5016"
+ACCENT = "#6B4226"
+ERROR_COLOR = "#CC3333"
+WHITE = "#FFFFFF"
+LIGHT_BG = "#E8E0D0"
+FONT_LABEL = ("Helvetica", 11)
+FONT_ENTRY = ("Helvetica", 11)
+FONT_BOLD = ("Helvetica", 12, "bold")
+FONT_FOOTER = ("Helvetica", 12)
 
 
 class InvoiceApp(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title('KLC Invoice Generator')
+        self.title("KLC Invoice Generator")
         self.configure(bg=BG)
         self.resizable(False, False)
-        self._item_rows: list = []
-        self._creds = None
+        self.line_items: list[dict] = []
         self._build_ui()
-        self._add_item_row()
+        self._reset_form()
 
-    # ── UI Construction ───────────────────────────────────────────────────────
+    # ------------------------------------------------------------------ build
 
     def _build_ui(self):
-        banner = tk.Frame(self, bg=GREEN, pady=10)
-        banner.pack(fill='x')
-        tk.Label(banner, text="Ko'olau Laser Creations",
-                 font=('Helvetica', 18, 'bold'), bg=GREEN, fg=WHITE).pack()
-        tk.Label(banner, text='Invoice Generator',
-                 font=('Helvetica', 11), bg=GREEN, fg='#A8C97A').pack()
-
-        main = tk.Frame(self, bg=BG, padx=20, pady=12)
-        main.pack(fill='both')
+        outer = tk.Frame(self, bg=BG, padx=20, pady=20)
+        outer.pack(fill="both", expand=True)
 
         # Client Info
-        self._section(main, 'Client Info')
-
-        r = tk.Frame(main, bg=BG); r.pack(fill='x', pady=2)
-        tk.Label(r, text='Company Name:', width=18, anchor='w', bg=BG).pack(side='left')
+        self._section_label(outer, "Client Info")
+        info = tk.Frame(outer, bg=BG)
+        info.pack(fill="x", pady=(4, 12))
         self.company_var = tk.StringVar()
-        self.company_var.trace_add('write', self._on_company_change)
-        tk.Entry(r, textvariable=self.company_var, width=32,
-                 font=('Helvetica', 10)).pack(side='left')
-
-        r = tk.Frame(main, bg=BG); r.pack(fill='x', pady=2)
-        tk.Label(r, text='Invoice Prefix:', width=18, anchor='w', bg=BG).pack(side='left')
         self.prefix_var = tk.StringVar()
-        tk.Entry(r, textvariable=self.prefix_var, width=10,
-                 font=('Helvetica', 10)).pack(side='left')
-
-        r = tk.Frame(main, bg=BG); r.pack(fill='x', pady=2)
-        tk.Label(r, text='Project:', width=18, anchor='w', bg=BG).pack(side='left')
         self.project_var = tk.StringVar()
-        tk.Entry(r, textvariable=self.project_var, width=42,
-                 font=('Helvetica', 10)).pack(side='left')
-
-        r = tk.Frame(main, bg=BG); r.pack(fill='x', pady=2)
-        tk.Label(r, text='Due Date:', width=18, anchor='w', bg=BG).pack(side='left')
-        default_due = (datetime.date.today() + datetime.timedelta(days=30)).strftime('%-m/%-d/%Y')
-        self.due_var = tk.StringVar(value=default_due)
-        tk.Entry(r, textvariable=self.due_var, width=14,
-                 font=('Helvetica', 10)).pack(side='left')
+        self.due_var = tk.StringVar()
+        self._field(info, "Company Name", self.company_var, 0)
+        self._field(info, "Invoice Prefix", self.prefix_var, 1)
+        self._field(info, "Project", self.project_var, 2)
+        self._field(info, "Due Date (M/D/YYYY)", self.due_var, 3)
+        self.company_var.trace_add("write", self._on_company_change)
 
         # Line Items
-        self._section(main, 'Line Items')
+        self._section_label(outer, "Line Items")
+        header = tk.Frame(outer, bg=BG)
+        header.pack(fill="x")
+        for text, width in [("Description", 28), ("Qty", 5), ("Unit Price", 8), ("Total", 8)]:
+            tk.Label(header, text=text, font=("Helvetica", 10, "bold"), bg=BG,
+                     fg=PRIMARY, width=width, anchor="w").pack(side="left", padx=(0, 4))
 
-        hdr = tk.Frame(main, bg=BG); hdr.pack(fill='x')
-        for text, w in [('Description', 32), ('Qty', 6), ('Unit Price', 9), ('Total', 10)]:
-            tk.Label(hdr, text=text, width=w, anchor='w', bg=BG,
-                     font=('Helvetica', 9, 'bold'), fg='#555555').pack(side='left', padx=(0, 4))
+        self.items_frame = tk.Frame(outer, bg=BG)
+        self.items_frame.pack(fill="x")
 
-        self.items_frame = tk.Frame(main, bg=BG)
-        self.items_frame.pack(fill='x')
-
-        btns = tk.Frame(main, bg=BG); btns.pack(fill='x', pady=(4, 0))
-        tk.Button(btns, text='+ Add Item', bg=GREEN, fg=WHITE, font=('Helvetica', 9),
-                  relief='flat', cursor='hand2', padx=8, pady=3,
-                  command=self._add_item_row).pack(side='left', padx=(0, 6))
-        tk.Button(btns, text='+ Add Discount', bg=BROWN, fg=WHITE, font=('Helvetica', 9),
-                  relief='flat', cursor='hand2', padx=8, pady=3,
-                  command=self._add_discount_row).pack(side='left')
+        btn_row = tk.Frame(outer, bg=BG)
+        btn_row.pack(fill="x", pady=(4, 12))
+        tk.Button(btn_row, text="+ Add Item", bg=LIGHT_BG, fg=PRIMARY,
+                  font=FONT_LABEL, bd=0, padx=10, pady=4,
+                  command=self._add_item).pack(side="left", padx=(0, 8))
+        tk.Button(btn_row, text="+ Add Discount", bg=LIGHT_BG, fg=ACCENT,
+                  font=FONT_LABEL, bd=0, padx=10, pady=4,
+                  command=self._add_discount).pack(side="left")
 
         # Adjustments & Notes
-        self._section(main, 'Adjustments & Notes')
+        self._section_label(outer, "Adjustments & Notes")
+        adj_frame = tk.Frame(outer, bg=BG)
+        adj_frame.pack(fill="x", pady=(4, 12))
+        self.adj_var = tk.StringVar(value="0.00")
+        self._field(adj_frame, "Adjustments ($)", self.adj_var, 0)
+        self.adj_var.trace_add("write", lambda *_: self._update_totals())
+        tk.Label(adj_frame, text="Notes", font=FONT_LABEL, bg=BG,
+                 fg=PRIMARY).grid(row=1, column=0, sticky="nw", pady=(4, 0))
+        self.notes_text = tk.Text(adj_frame, height=3, width=50, font=FONT_ENTRY,
+                                   bg=WHITE, relief="solid", bd=1)
+        self.notes_text.grid(row=1, column=1, sticky="w", padx=(8, 0), pady=(4, 0))
 
-        r = tk.Frame(main, bg=BG); r.pack(fill='x', pady=2)
-        tk.Label(r, text='Adjustments ($):', width=18, anchor='w', bg=BG).pack(side='left')
-        self.adj_var = tk.StringVar(value='0.00')
-        self.adj_var.trace_add('write', lambda *_: self._update_totals())
-        tk.Entry(r, textvariable=self.adj_var, width=10,
-                 font=('Helvetica', 10)).pack(side='left')
+        # Footer bar
+        footer = tk.Frame(self, bg=PRIMARY, pady=12, padx=20)
+        footer.pack(fill="x", side="bottom")
+        self.subtotal_label = tk.Label(footer, text="Subtotal: $0.00",
+                                        fg=WHITE, bg=PRIMARY, font=FONT_FOOTER)
+        self.subtotal_label.pack(side="left", padx=(0, 20))
+        self.total_label = tk.Label(footer, text="Total: $0.00",
+                                     fg=WHITE, bg=PRIMARY, font=FONT_FOOTER)
+        self.total_label.pack(side="left")
+        tk.Button(footer, text="Clear", bg=LIGHT_BG, fg=PRIMARY, font=FONT_BOLD,
+                  bd=0, padx=14, pady=6,
+                  command=self._reset_form).pack(side="right", padx=(8, 0))
+        self.gen_btn = tk.Button(footer, text="Generate Invoice", bg=ACCENT, fg=WHITE,
+                                  font=FONT_BOLD, bd=0, padx=14, pady=6,
+                                  command=self._generate)
+        self.gen_btn.pack(side="right")
 
-        tk.Label(main, text='Notes:', anchor='w', bg=BG,
-                 font=('Helvetica', 10)).pack(anchor='w', pady=(4, 0))
-        self.notes_text = tk.Text(main, width=60, height=3, font=('Helvetica', 10))
-        self.notes_text.pack(fill='x', pady=(2, 8))
+    def _section_label(self, parent, text: str):
+        tk.Label(parent, text=text, font=FONT_BOLD, bg=BG,
+                 fg=PRIMARY).pack(anchor="w", pady=(8, 2))
 
-        # Bottom bar
-        bar = tk.Frame(self, bg=GREEN, padx=20, pady=10)
-        bar.pack(fill='x')
-        self.totals_var = tk.StringVar(value='Subtotal: $0.00   Total: $0.00')
-        tk.Label(bar, textvariable=self.totals_var, bg=GREEN, fg=WHITE,
-                 font=('Helvetica', 11)).pack(side='left')
-        btn_f = tk.Frame(bar, bg=GREEN); btn_f.pack(side='right')
-        tk.Button(btn_f, text='Clear', bg='#CCCCCC', fg='#333333',
-                  font=('Helvetica', 10), relief='flat', cursor='hand2',
-                  padx=10, pady=6, command=self._clear).pack(side='left', padx=(0, 8))
-        tk.Button(btn_f, text='Generate Invoice', bg=BROWN, fg=WHITE,
-                  font=('Helvetica', 11, 'bold'), relief='flat', cursor='hand2',
-                  padx=16, pady=6, command=self._generate).pack(side='left')
+    def _field(self, parent, label: str, var: tk.StringVar, row: int):
+        tk.Label(parent, text=label, font=FONT_LABEL, bg=BG,
+                 fg=PRIMARY).grid(row=row, column=0, sticky="w", pady=2)
+        tk.Entry(parent, textvariable=var, font=FONT_ENTRY, bg=WHITE,
+                 relief="solid", bd=1, width=30).grid(
+            row=row, column=1, sticky="w", padx=(8, 0), pady=2)
 
-    def _section(self, parent, title):
-        tk.Label(parent, text=title, font=('Helvetica', 11, 'bold'),
-                 bg=BG, fg='#1A1A1A').pack(anchor='w', pady=(12, 2))
+    # --------------------------------------------------------------- behavior
 
-    # ── Line Items ────────────────────────────────────────────────────────────
-
-    def _add_item_row(self, description='', unit_price='0.00'):
-        row = LineItemRow(
-            self.items_frame,
-            on_change=self._update_totals,
-            on_delete=lambda r=None: self._delete_row(row),
-        )
-        if description:
-            row.desc_var.set(description)
-        if unit_price != '0.00':
-            row.price_var.set(unit_price)
-        self._item_rows.append(row)
-        self._update_totals()
-
-    def _add_discount_row(self):
-        self._add_item_row(description='Discount', unit_price='-0.00')
-
-    def _delete_row(self, row):
-        if len(self._item_rows) <= 1:
+    def _on_company_change(self, *_):
+        name = self.company_var.get().strip()
+        if not name:
             return
-        self._item_rows.remove(row)
-        row.destroy()
+        first = name.split()[0].upper()[:4]
+        self.prefix_var.set(first)
+
+    def _add_item(self, desc: str = "", qty: str = "1",
+                  price: str = "0.00", discount: bool = False):
+        row_frame = tk.Frame(self.items_frame, bg=BG)
+        row_frame.pack(fill="x", pady=2)
+
+        desc_var = tk.StringVar(value="Discount" if discount else desc)
+        qty_var = tk.StringVar(value=qty)
+        price_var = tk.StringVar(value="-0.00" if discount else price)
+        total_var = tk.StringVar(value="$0.00")
+
+        tk.Entry(row_frame, textvariable=desc_var, font=FONT_ENTRY, bg=WHITE,
+                 relief="solid", bd=1, width=28).pack(side="left", padx=(0, 4))
+        tk.Entry(row_frame, textvariable=qty_var, font=FONT_ENTRY, bg=WHITE,
+                 relief="solid", bd=1, width=5).pack(side="left", padx=(0, 4))
+        tk.Entry(row_frame, textvariable=price_var, font=FONT_ENTRY, bg=WHITE,
+                 relief="solid", bd=1, width=8).pack(side="left", padx=(0, 4))
+        tk.Label(row_frame, textvariable=total_var, font=FONT_ENTRY, bg=BG,
+                 fg=PRIMARY, width=8, anchor="w").pack(side="left", padx=(0, 4))
+
+        item = {
+            "frame": row_frame,
+            "desc": desc_var,
+            "qty": qty_var,
+            "price": price_var,
+            "total": total_var,
+        }
+        self.line_items.append(item)
+
+        def delete_row():
+            if len(self.line_items) <= 1:
+                return
+            row_frame.destroy()
+            self.line_items.remove(item)
+            self._update_totals()
+
+        tk.Button(row_frame, text="✕", bg=BG, fg=ERROR_COLOR, font=FONT_LABEL,
+                  bd=0, command=delete_row).pack(side="left")
+
+        for v in (desc_var, qty_var, price_var):
+            v.trace_add("write", lambda *_: self._update_totals())
         self._update_totals()
 
-    # ── Live Totals ───────────────────────────────────────────────────────────
+    def _add_discount(self):
+        self._add_item(discount=True)
 
     def _update_totals(self):
-        subtotal = sum(r.get_item()['total'] for r in self._item_rows)
+        subtotal = 0.0
+        for item in self.line_items:
+            try:
+                total = float(item["qty"].get()) * float(item["price"].get())
+            except ValueError:
+                total = 0.0
+            item["total"].set(f"${total:.2f}")
+            subtotal += total
         try:
             adj = float(self.adj_var.get())
         except ValueError:
             adj = 0.0
-        self.totals_var.set(
-            f'Subtotal: ${subtotal:,.2f}   Total: ${subtotal + adj:,.2f}'
+        grand_total = subtotal + adj
+        self.subtotal_label.config(text=f"Subtotal: ${subtotal:.2f}")
+        self.total_label.config(text=f"Total: ${grand_total:.2f}")
+
+    def _reset_form(self):
+        self.company_var.set("")
+        self.prefix_var.set("")
+        self.project_var.set("")
+        self.due_var.set(
+            (date.today() + timedelta(days=30)).strftime("%-m/%-d/%Y")
         )
+        self.adj_var.set("0.00")
+        for item in list(self.line_items):
+            item["frame"].destroy()
+        self.line_items.clear()
+        if hasattr(self, "notes_text"):
+            self.notes_text.delete("1.0", "end")
+        self._add_item()
 
-    # ── Prefix Auto-Suggest ───────────────────────────────────────────────────
-
-    def _on_company_change(self, *_):
-        self.prefix_var.set(sheets.suggest_prefix(self.company_var.get()))
-
-    # ── Generate Invoice ──────────────────────────────────────────────────────
-
-    def _generate(self):
+    def _collect_data(self) -> dict | None:
         company = self.company_var.get().strip()
-        prefix  = self.prefix_var.get().strip().upper()
+        prefix = self.prefix_var.get().strip().upper()
         project = self.project_var.get().strip()
-        due     = self.due_var.get().strip()
+        due = self.due_var.get().strip()
 
-        if not company:
-            messagebox.showerror('Missing Field', 'Company Name is required.'); return
-        if not prefix:
-            messagebox.showerror('Missing Field', 'Invoice Prefix is required.'); return
-        if not project:
-            messagebox.showerror('Missing Field', 'Project is required.'); return
+        if not all([company, prefix, project, due]):
+            messagebox.showerror(
+                "Missing Fields",
+                "Company Name, Invoice Prefix, Project, and Due Date are required."
+            )
+            return None
 
-        items = [r.get_item() for r in self._item_rows]
-        if not any(item['description'] for item in items):
-            messagebox.showerror('Missing Items', 'Add at least one line item.'); return
+        items = []
+        for item in self.line_items:
+            try:
+                qty = float(item["qty"].get())
+                price = float(item["price"].get())
+            except ValueError:
+                messagebox.showerror("Invalid Input",
+                                      "Qty and Unit Price must be numbers.")
+                return None
+            items.append({
+                "desc": item["desc"].get(),
+                "qty": qty,
+                "price": price,
+                "total": round(qty * price, 2),
+            })
 
         try:
             adj = float(self.adj_var.get())
         except ValueError:
-            messagebox.showerror('Invalid Input', 'Adjustments must be a number.'); return
+            adj = 0.0
 
-        notes = self.notes_text.get('1.0', 'end').strip()
+        notes_raw = self.notes_text.get("1.0", "end-1c")
+        notes = [line for line in notes_raw.split("\n")[:3]]
 
-        try:
-            if not self._creds or not self._creds.valid:
-                self._creds = sheets.get_credentials()
-            gc, drive = sheets.get_clients(self._creds)
-        except FileNotFoundError as e:
-            messagebox.showerror('Setup Required', str(e)); return
-
-        try:
-            all_titles     = sheets.get_all_invoice_titles(drive)
-            invoice_number = sheets.next_invoice_number(all_titles, prefix)
-        except Exception as e:
-            messagebox.showerror('Drive Error', f'Could not scan Drive:\n{e}'); return
-
-        subtotal = sum(item['total'] for item in items)
-        if not messagebox.askyesno(
-            'Confirm Invoice',
-            f'Generate Invoice {invoice_number}?\n\n'
-            f'Client:  {company}\n'
-            f'Project: {project}\n'
-            f'Total:   ${subtotal + adj:,.2f}\n\n'
-            'PDF will be saved to your Desktop.',
-        ):
-            return
-
-        form_data = {
-            'company_name':   company,
-            'prefix':         prefix,
-            'project':        project,
-            'due_date':       due,
-            'items':          items,
-            'adjustments':    adj,
-            'notes':          notes,
-            'invoice_number': invoice_number,
+        return {
+            "client_name": company,
+            "prefix": prefix,
+            "project": project,
+            "due_date": due,
+            "date_submitted": date.today().strftime("%-m/%-d/%Y"),
+            "line_items": items,
+            "adjustments": adj,
+            "notes": notes,
         }
-        try:
-            sheet_id = sheets.create_invoice_sheet(drive, gc, form_data)
-            pdf_path = sheets.export_to_pdf(self._creds, sheet_id, invoice_number)
-        except FileNotFoundError as e:
-            messagebox.showerror('Template Missing', str(e)); return
-        except Exception as e:
-            messagebox.showerror('Error', f'Failed to generate invoice:\n{e}'); return
 
-        os.system(f'open "{pdf_path}"')
-        messagebox.showinfo('Done', f'Invoice {invoice_number} created!\nPDF saved to Desktop.')
+    def _generate(self):
+        data = self._collect_data()
+        if data is None:
+            return
+        self.gen_btn.config(state="disabled", text="Generating…")
 
-    # ── Clear ─────────────────────────────────────────────────────────────────
+        def run():
+            try:
+                import sheets
+                url, pdf = sheets.create_invoice(data)
+                self.after(0, lambda: self._on_success(url, pdf))
+            except Exception as exc:
+                self.after(0, lambda: self._on_error(str(exc)))
 
-    def _clear(self):
-        self.company_var.set('')
-        self.prefix_var.set('')
-        self.project_var.set('')
-        self.due_var.set(
-            (datetime.date.today() + datetime.timedelta(days=30)).strftime('%-m/%-d/%Y')
+        threading.Thread(target=run, daemon=True).start()
+
+    def _on_success(self, url: str, pdf: str):
+        self.gen_btn.config(state="normal", text="Generate Invoice")
+        messagebox.showinfo(
+            "Invoice Created",
+            f"Google Sheet:\n{url}\n\nPDF saved to:\n{pdf}"
         )
-        self.adj_var.set('0.00')
-        self.notes_text.delete('1.0', 'end')
-        for row in list(self._item_rows):
-            row.destroy()
-        self._item_rows.clear()
-        self._add_item_row()
+
+    def _on_error(self, msg: str):
+        self.gen_btn.config(state="normal", text="Generate Invoice")
+        messagebox.showerror("Error", msg)
 
 
-if __name__ == '__main__':
-    app = InvoiceApp()
-    app.mainloop()
+if __name__ == "__main__":
+    InvoiceApp().mainloop()
 ```
 
-- [ ] **Step 2: Launch and verify the UI**
+- [ ] **Launch the app and verify it renders correctly**
 
 ```bash
-cd "KLC Invoice Generator" && python app.py
+cd "/Users/micahmiyashiro/Desktop/ClaudeCodeTest/KLC Invoice Generator"
+python app.py
 ```
 
-Check each of the following manually:
-- App opens with the green KLC banner
-- Typing in Company Name auto-fills the Prefix field
-- `+ Add Item` appends a new blank row
-- `+ Add Discount` appends a row with description "Discount" and price "-0.00"
-- `✕` removes a row (cannot remove the last remaining row)
-- Editing Qty or Unit Price updates Total column and the bottom bar live
-- `Clear` resets all fields and leaves one blank item row
-- Do NOT click Generate yet (save that for Task 9)
+Manual checks:
+- All four sections visible (Client Info, Line Items, Adjustments & Notes, footer)
+- Typing a company name auto-fills the prefix field
+- `+ Add Item` appends a row; `✕` removes it (cannot remove last row)
+- `+ Add Discount` appends a row with "Discount" and "-0.00"
+- Editing qty/price updates the Total column and footer totals live
+- `Clear` resets the form
 
-- [ ] **Step 3: Commit**
+- [ ] **Run unit tests to confirm no regressions**
 
 ```bash
+cd "/Users/micahmiyashiro/Desktop/ClaudeCodeTest"
+python -m pytest "KLC Invoice Generator/tests/" -v
+```
+
+Expected: 15 PASSED.
+
+- [ ] **Commit**
+
+```bash
+cd "/Users/micahmiyashiro/Desktop/ClaudeCodeTest"
 git add "KLC Invoice Generator/app.py"
 git commit -m "feat: build full tkinter invoice form UI"
 ```
 
 ---
 
-### Task 9: End-to-end test and SETUP.md
+## Task 9: SETUP.md + End-to-End Test
 
 **Files:**
 - Create: `KLC Invoice Generator/SETUP.md`
 
-- [ ] **Step 1: Full end-to-end test**
+- [ ] **Write SETUP.md**
 
-Run `python app.py`. Fill in a real invoice:
-- Company Name: Ukey Creation  → Prefix auto-fills to UKEY, change it to U
-- Project: E2E test run
-- Due Date: leave default
-- Add one item: description "Test cut", qty 1, unit price 10.00
-- Click **Generate Invoice**
-
-Verify all of the following:
-1. Confirmation dialog shows the correct next invoice number (e.g. U016)
-2. Google Sheet appears in Drive named `Invoice U016`
-3. PDF lands on Desktop named `Invoice U016.pdf`
-4. PDF opens automatically
-5. PDF shows correct client name, project, item, subtotal and total
-
-Delete the test Sheet from Drive and the test PDF from Desktop after confirming.
-
-- [ ] **Step 2: Write SETUP.md**
-
-Create `KLC Invoice Generator/SETUP.md` with the following content (use plain indented blocks instead of fenced code inside this file):
-
-```
+```markdown
 # KLC Invoice Generator — Setup
 
-## 1. Python dependencies
+Follow these steps once before using the app for the first time.
 
-    pip install -r requirements.txt
+## 1. Enable Google APIs
 
-## 2. Google Cloud project
-
-1. Go to https://console.cloud.google.com
+1. Go to https://console.cloud.google.com/
 2. Create a new project (or select an existing one)
-3. Enable both of these APIs:
-   - Google Sheets API
-   - Google Drive API
+3. In the left menu: **APIs & Services → Library**
+4. Search for and enable **Google Sheets API**
+5. Search for and enable **Google Drive API**
 
-## 3. OAuth2 credentials
+## 2. Create OAuth2 Credentials
 
-1. In the Cloud Console, go to APIs & Services → Credentials
-2. Click Create Credentials → OAuth client ID
-3. Application type: Desktop app
-4. Download the JSON and save it as credentials.json in this folder
+1. Go to **APIs & Services → Credentials**
+2. Click **Create Credentials → OAuth client ID**
+3. Application type: **Desktop app**
+4. Name it anything (e.g., "KLC Invoice Generator")
+5. Click **Create**, then **Download JSON**
+6. Rename the downloaded file to `credentials.json`
+7. Move it into this folder (`KLC Invoice Generator/`)
 
-On first run, a browser window opens asking you to sign in with
-koolaulasercreations@gmail.com and grant access. After approving,
-token.json is saved and all future runs are silent.
+> `credentials.json` is in `.gitignore` — it will not be committed.
 
-## 4. Create Invoice TEMPLATE in Drive (for new clients only)
-
-When you invoice a brand-new company for the first time, the app
-needs a blank template to copy.
-
-1. Open Invoice U015 (or any recent invoice) in Google Drive
-2. File → Make a copy
-3. Name the copy exactly: Invoice TEMPLATE
-4. Clear all the dynamic cells (submitted date, client name,
-   invoice number, project, due date, line items, subtotal, total,
-   notes) but leave all header rows and formatting intact
-5. Leave at least 20 blank rows below the column-header row
-
-## 5. Run the app
-
-    python app.py
-```
-
-- [ ] **Step 3: Final commit and push**
+## 3. Install Python Dependencies
 
 ```bash
+pip install -r requirements.txt
+```
+
+## 4. Create the Invoice Template in Google Drive
+
+1. Open Google Drive
+2. Create a new Google Sheet named exactly: `Invoice TEMPLATE`
+3. Copy your existing invoice layout into it (or design from scratch)
+4. Leave data cells blank — the app will fill them in
+
+The template must be in a Google Drive folder (not "My Drive" root if possible).
+The app will copy this template for any client that has no prior invoices.
+
+## 5. Run the App
+
+```bash
+python app.py
+```
+
+On first run, a browser window will open asking you to authorize the app.
+After authorizing, a `token.json` file is saved locally — future runs skip the browser.
+
+> `token.json` is in `.gitignore` — it will not be committed.
+
+## Troubleshooting
+
+**"No 'Invoice TEMPLATE' found"** — Check that you created a sheet named exactly `Invoice TEMPLATE` in Drive and it is not in the Trash.
+
+**"credentials.json not found"** — Make sure you downloaded and renamed the file correctly, and placed it in the `KLC Invoice Generator/` folder.
+
+**Wrong cells filled** — The cell positions in `sheets.py` (constants at the top) were set based on the original invoice layout. If your template uses different rows/columns, update those constants.
+```
+
+- [ ] **End-to-end test (requires credentials.json and Invoice TEMPLATE in Drive)**
+
+```bash
+cd "/Users/micahmiyashiro/Desktop/ClaudeCodeTest/KLC Invoice Generator"
+python app.py
+```
+
+Fill in the form:
+- Company: `Umauma` (prefix should auto-fill as `UMAU`)
+- Project: `E2E Test`
+- Due Date: leave default
+- Add 2 line items with prices
+- Click **Generate Invoice**
+
+Verify:
+1. A progress indicator appears on the button during generation
+2. A success dialog shows the Google Sheet URL and PDF path
+3. New file appears in Google Drive: `Invoice UMAU001` (or next number)
+4. PDF appears on Desktop and auto-opens
+5. Open the Google Sheet — all fields should be in the correct cells
+
+- [ ] **Commit**
+
+```bash
+cd "/Users/micahmiyashiro/Desktop/ClaudeCodeTest"
 git add "KLC Invoice Generator/SETUP.md"
 git commit -m "docs: add SETUP.md for KLC Invoice Generator"
-git push
+```
+
+- [ ] **Final: push to GitHub**
+
+```bash
+git push origin master
 ```

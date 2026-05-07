@@ -1,140 +1,105 @@
 # KLC Invoice Generator — Design Spec
-_Date: 2026-05-07_
 
 ## Overview
 
-A Python/tkinter desktop app that fills out an invoice form, creates a new Google Sheets invoice in Drive (matching the existing U010–U015 format), exports it as a PDF to `~/Desktop`, and auto-opens the PDF for review.
+A Python desktop application (tkinter) that lets the user fill in invoice details, then automatically:
+1. Copies an existing Google Sheets invoice from Drive (preserving formatting)
+2. Writes the new invoice data into the correct cells
+3. Exports a PDF to `~/Desktop/` and auto-opens it
 
 ---
 
-## File Structure
+## Architecture
 
-```
-KLC Invoice Generator/
-├── app.py                  # Main tkinter GUI + orchestration
-├── sheets.py               # All Google Drive/Sheets API logic
-├── credentials.json        # OAuth2 client credentials (not committed to git)
-└── token.json              # Auto-saved OAuth token after first login (not committed to git)
-```
+Three source files with clean boundaries:
 
-**Dependencies:** `gspread`, `google-auth-oauthlib`
+| File | Responsibility |
+|---|---|
+| `app.py` | tkinter UI only — reads form input, calls `sheets.create_invoice(data)` |
+| `sheets.py` | All Google API logic — auth, Drive search/copy, Sheets write, PDF export |
+| `logic.py` | Pure functions — `suggest_prefix`, `next_invoice_number` — no I/O, unit-tested |
 
 ---
 
-## Authentication
+## UI Form (tkinter)
 
-- OAuth2 Desktop App flow via `google-auth-oauthlib`
-- First run: browser opens Google consent screen for `koolaulasercreations@gmail.com`
-- Token saved to `token.json`; all subsequent runs are silent
-- Required scopes: `https://www.googleapis.com/auth/spreadsheets`, `https://www.googleapis.com/auth/drive`
-- `credentials.json` must be placed in the app folder by the user (downloaded from Google Cloud Console)
-- A `SETUP.md` file in the app folder walks through the one-time Google Cloud + credentials setup
+**Color scheme:** Background `#F5F0E8`, Primary `#2D5016`, Accent `#6B4226`, Error `#CC3333`
 
----
+### Sections
 
-## Form UI
-
-Styled to match the Quote Calculator: dark green (`#2D5016`) banner, cream (`#F5F0E8`) background.
-
-### Client Info Section
+**1. Client Info**
 | Field | Default | Notes |
 |---|---|---|
-| Company Name | (blank) | Triggers prefix auto-suggestion on change |
-| Invoice Prefix | Auto-suggested | First word of company name, uppercased, max 4 chars; editable |
-| Project / Description | (blank) | Single line |
-| Due Date | Today + 30 days | Editable (MM/DD/YYYY) |
+| Company Name | blank | Auto-suggests Invoice Prefix on keystroke |
+| Invoice Prefix | auto-filled | First word uppercased, max 4 chars; fully editable |
+| Project | blank | Single line |
+| Due Date | Today + 30 days | M/D/YYYY format |
 
-### Line Items Section
-Dynamic table. Each row has: Description (wide) | Qty | Unit Price | Total (read-only, auto-calculated).
+**2. Line Items** — dynamic table
+- Columns: Description (wide) | Qty | Unit Price | Total (read-only)
+- `+ Add Item` — appends blank row
+- `+ Add Discount` — appends row with "Discount" label and `-0.00` price
+- `✕` per row — deletes row (cannot delete last row)
+- Live total recalculates on every keystroke
 
-- **`+ Add Item`** — appends a blank row
-- **`+ Add Discount`** — appends a row with a negative unit price pre-filled as `$0.00` and label `"Discount"`
-- Each row has an **`✕`** button to delete it
-- At least one item row always present
+**3. Adjustments & Notes**
+- Adjustments ($) — added to subtotal for grand total
+- Notes — multiline text, up to 3 lines written to sheet
 
-### Adjustments & Notes Section
-| Field | Default |
+**4. Footer bar** (green)
+- Left: live Subtotal + Total
+- Right: `Clear` (resets form) + `Generate Invoice` (primary action, disabled during generation)
+
+---
+
+## Invoice Generation Flow
+
+1. **Authenticate** — OAuth2 desktop flow; browser opens once, token cached in `token.json`
+2. **Find source file** — Drive search for `Invoice <PREFIX>NNN` files; falls back to `Invoice TEMPLATE` for new clients
+3. **Determine invoice number** — parse numeric suffixes from matching filenames, increment max, zero-pad to 3 digits (e.g., U016)
+4. **Copy file** — `Drive.files().copy()` preserves all formatting, borders, logos
+5. **Write cells** — batch-clear `A7:F50`, then batch-write all fields atomically
+6. **Export PDF** — Drive export endpoint → `~/Desktop/Invoice <PREFIX><NNN>.pdf` → auto-opened
+
+### Cell Mapping
+
+| Cell | Field |
 |---|---|
-| Adjustments ($) | 0.00 |
-| Notes | (blank, multiline) |
-
-### Bottom Bar
-- Live-updating **Subtotal** and **Total** (`Total = Subtotal + Adjustments`)
-- **`Generate Invoice`** button (dark green, full width)
-- **`Clear`** button (resets form to defaults)
-
----
-
-## Invoice Numbering Logic
-
-1. Read the Invoice Prefix from the form (e.g. `U`)
-2. Search Drive for files titled `Invoice <PREFIX>\d+` (case-insensitive)
-3. Parse all numeric suffixes, find the maximum (e.g. `015` from `U015`)
-4. Next invoice number = max + 1, zero-padded to 3 digits (e.g. `U016`)
-5. If no existing files found for that prefix → start at `001`
-
-**Prefix auto-suggestion:** `first_word(company_name).upper()[:4]`
-- `"Ukey Creation"` → `UKEY`
-- `"PEWA by Pono Potions"` → `PEWA`
-- Always editable by the user before generating
+| A7 | Date submitted |
+| A9 | Client name |
+| E9 | Invoice number |
+| A11 | Project |
+| C11 | Due date |
+| A13+ | Line item description (one per row) |
+| D13+ | Line item qty |
+| E13+ | Line item unit price |
+| F13+ | Line item total |
+| A(13+N+2)+ | Notes lines |
+| Clear range | A7:F50 |
 
 ---
 
-## Sheet Creation & PDF Export Flow
+## Dependencies
 
-### For a known company (prefix exists in Drive)
-1. Find the highest-numbered `Invoice <PREFIX>NNN` file in Drive (by parsing the numeric suffix, not by creation date)
-2. Copy it using the Drive `files.copy` API (preserves all formatting)
-3. Save the copy to the same Drive folder as the source file
-4. Clear the data cells (submitted date, client, invoice #, project, due date, line items, notes, subtotal, adjustments, total)
-5. Write new values to the appropriate cells
-6. Rename the file to `Invoice <PREFIX>NNN` (e.g. `Invoice U016`)
-
-### For a new company (no prior invoices)
-1. Find the master template file titled `Invoice TEMPLATE` in Drive (searched by exact title)
-2. Copy it to the same folder as the template file and fill it the same way
-3. The `Invoice TEMPLATE` file is created once during initial setup and lives in the invoices Drive folder
-
-### Cell mapping (based on existing invoice structure)
-The invoice layout occupies a single sheet with this row structure:
-- Rows 1–7: KLC header + "INVOICE" + submitted date (static / date-updated)
-- Rows 8–11: Invoice for / Payable to / Invoice # / Project / Due date (client-specific)
-- Row 12: Column headers (Description, Qty, Unit price, Total price)
-- Rows 13–N: Line items (variable length)
-- Rows N+1–N+3: Notes + Subtotal / Adjustments / Total block
-
-Because line item count varies, the app clears rows 13 onward before writing new data rather than trying to insert/delete rows. The `Invoice TEMPLATE` must have enough blank rows buffered below row 12 to accommodate any number of items (20 blank rows is sufficient).
-
-### PDF Export & Desktop Save
-1. Use the Drive export endpoint: `GET /drive/v3/files/{id}/export?mimeType=application/pdf`
-2. Stream response to `~/Desktop/Invoice <PREFIX><NNN>.pdf` (matching the Sheet title format)
-3. Call `os.system(f'open "{pdf_path}"')` to auto-open in the default PDF viewer
+```
+gspread>=6.0.0
+google-auth-oauthlib>=1.2.0
+google-api-python-client>=2.100.0
+```
 
 ---
 
-## Error Handling
+## Prefix / Numbering Logic
 
-- **Missing `credentials.json`**: Show a dialog pointing to `SETUP.md`
-- **Drive API failure**: Show error dialog with the API message; do not create a partial invoice
-- **No `Invoice TEMPLATE` for new company**: Show a dialog explaining the user must create the template file in Drive
-- **Invalid form input** (non-numeric qty/price, empty company name): Highlight the offending field and show an inline error before any API calls
+- **suggest_prefix(company_name):** `company_name.strip().split()[0].upper()[:4]`
+- **next_invoice_number(filenames, prefix):** regex `^Invoice <PREFIX>(\d+)$` (case-insensitive), find max numeric suffix, return `<PREFIX><max+1:03d>`. Returns `<PREFIX>001` if no matches.
 
 ---
 
-## Setup Artifacts
+## One-Time Setup (user)
 
-A `SETUP.md` file in the app folder covers:
-1. Creating a Google Cloud project
-2. Enabling Sheets API + Drive API
-3. Creating OAuth2 Desktop App credentials and downloading `credentials.json`
-4. Creating the `Invoice TEMPLATE` spreadsheet in Drive
-5. Running `pip install gspread google-auth-oauthlib` and launching with `python app.py`
-
----
-
-## Out of Scope
-
-- Email sending
-- Multi-sheet invoices
-- Payment tracking
-- Integration with the Quote Calculator
+1. Enable Google Sheets API + Google Drive API in Google Cloud Console
+2. Create OAuth2 Desktop App credentials, download `credentials.json` into `KLC Invoice Generator/`
+3. Create an `Invoice TEMPLATE` spreadsheet in Google Drive (copy of a blank invoice)
+4. `pip install -r requirements.txt`
+5. `python app.py` — browser opens for auth on first run only
