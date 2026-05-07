@@ -79,11 +79,46 @@ def search_template(drive) -> dict | None:
 
 
 def copy_invoice(drive, source_id: str, new_name: str, folder_id: str) -> str:
-    raise NotImplementedError
+    """Copies a Drive file into the same folder. Returns the new file's ID."""
+    body = {"name": new_name, "parents": [folder_id]}
+    new_file = drive.files().copy(fileId=source_id, body=body).execute()
+    return new_file["id"]
 
 
 def write_invoice_cells(gc, sheet_id: str, data: dict) -> None:
-    raise NotImplementedError
+    """Batch-clears data range and writes all invoice fields.
+
+    data keys: client_name (str), invoice_number (str), project (str),
+               due_date (str), date_submitted (str),
+               line_items (list of {desc: str, qty: float, price: float, total: float}),
+               notes (list[str], up to 3 elements), adjustments (float)
+    """
+    ws = gc.open_by_key(sheet_id).sheet1
+    ws.batch_clear([CLEAR_RANGE])
+
+    updates = [
+        {"range": CELL_DATE_SUBMITTED, "values": [[data["date_submitted"]]]},
+        {"range": CELL_CLIENT_NAME,    "values": [[data["client_name"]]]},
+        {"range": CELL_INVOICE_NUMBER, "values": [[data["invoice_number"]]]},
+        {"range": CELL_PROJECT,        "values": [[data["project"]]]},
+        {"range": CELL_DUE_DATE,       "values": [[data["due_date"]]]},
+    ]
+
+    for i, item in enumerate(data["line_items"]):
+        row = LINE_ITEM_START_ROW + i
+        updates += [
+            {"range": f"{LINE_ITEM_COL_DESC}{row}",       "values": [[item["desc"]]]},
+            {"range": f"{LINE_ITEM_COL_QTY}{row}",        "values": [[item["qty"]]]},
+            {"range": f"{LINE_ITEM_COL_UNIT_PRICE}{row}", "values": [[item["price"]]]},
+            {"range": f"{LINE_ITEM_COL_TOTAL}{row}",      "values": [[item["total"]]]},
+        ]
+
+    note_start = LINE_ITEM_START_ROW + len(data["line_items"]) + 2
+    for j, line in enumerate(data.get("notes", [])[:3]):
+        if line.strip():
+            updates.append({"range": f"A{note_start + j}", "values": [[line]]})
+
+    ws.batch_update(updates, value_input_option="USER_ENTERED")
 
 
 def export_pdf(creds, file_id: str, dest_path: str) -> None:
