@@ -1,3 +1,6 @@
 .DS_Store
 __pycache__/
 *.pyc
+KLC Invoice Generator/credentials.json
+KLC Invoice Generator/token.json
+KLC Invoice Generator/invoices.json

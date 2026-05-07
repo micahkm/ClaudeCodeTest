@@ -267,20 +267,21 @@ class InvoiceApp(tk.Tk):
 
         def run():
             try:
-                import sheets
-                url, pdf = sheets.create_invoice(data)
+                import pdf_gen
+                url, pdf = pdf_gen.create_invoice(data)
                 self.after(0, lambda: self._on_success(url, pdf))
             except Exception as exc:
-                self.after(0, lambda: self._on_error(str(exc)))
+                msg = str(exc)
+                self.after(0, lambda: self._on_error(msg))
 
         threading.Thread(target=run, daemon=True).start()
 
-    def _on_success(self, url: str, pdf: str):
+    def _on_success(self, url, pdf: str):
         self.gen_btn.config(state="normal", text="Generate Invoice")
-        messagebox.showinfo(
-            "Invoice Created",
-            f"Google Sheet:\n{url}\n\nPDF saved to:\n{pdf}"
-        )
+        msg = f"PDF saved to:\n{pdf}"
+        if url:
+            msg = f"Google Sheet:\n{url}\n\n{msg}"
+        messagebox.showinfo("Invoice Created", msg)
 
     def _on_error(self, msg: str):
         self.gen_btn.config(state="normal", text="Generate Invoice")
