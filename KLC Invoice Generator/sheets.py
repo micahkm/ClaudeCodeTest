@@ -191,3 +191,22 @@ def create_invoice_sheet(drive, gc, form_data: dict) -> str:
 
     ws.batch_update(updates, value_input_option='USER_ENTERED')
     return new_id
+
+
+def export_to_pdf(creds: Credentials, spreadsheet_id: str, invoice_number: str) -> str:
+    """Export spreadsheet as PDF to ~/Desktop; return the saved file path."""
+    desktop  = os.path.expanduser('~/Desktop')
+    pdf_path = os.path.join(desktop, f'Invoice {invoice_number}.pdf')
+
+    url = (
+        f'https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export'
+        f'?format=pdf&size=letter&portrait=true&fitw=true&gridlines=false'
+    )
+    session  = AuthorizedSession(creds)
+    response = session.get(url)
+    response.raise_for_status()
+
+    with open(pdf_path, 'wb') as f:
+        f.write(response.content)
+
+    return pdf_path
