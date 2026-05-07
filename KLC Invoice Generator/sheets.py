@@ -121,3 +121,73 @@ def find_source_file(drive, prefix: str):
             "See SETUP.md for template setup instructions."
         )
     return tmpl[0]['id'], (tmpl[0].get('parents') or [None])[0]
+
+
+def create_invoice_sheet(drive, gc, form_data: dict) -> str:
+    """Copy source invoice, write form data into it, return new spreadsheet ID.
+
+    form_data keys:
+        company_name  str
+        prefix        str
+        project       str
+        due_date      str  (M/D/YYYY)
+        items         list of {'description': str, 'qty': float,
+                               'unit_price': float, 'total': float}
+        adjustments   float
+        notes         str
+        invoice_number str  (e.g. 'U016')
+    """
+    prefix         = form_data['prefix']
+    invoice_number = form_data['invoice_number']
+
+    source_id, parent_id = find_source_file(drive, prefix)
+
+    copy_body = {'name': f'Invoice {invoice_number}'}
+    if parent_id:
+        copy_body['parents'] = [parent_id]
+    new_file = drive.files().copy(fileId=source_id, body=copy_body).execute()
+    new_id   = new_file['id']
+
+    sh = gc.open_by_key(new_id)
+    ws = sh.sheet1
+
+    ws.batch_clear([CLEAR_RANGE])
+
+    today   = datetime.date.today().strftime('%-m/%-d/%Y')
+    items   = form_data['items']
+    subtotal = round(sum(item['total'] for item in items), 2)
+    adj      = form_data['adjustments']
+    total    = round(subtotal + adj, 2)
+
+    updates = [
+        {'range': SUBMITTED_DATE_CELL, 'values': [[f"Submitted on {today}"]]},
+        {'range': CLIENT_NAME_CELL,    'values': [[form_data['company_name']]]},
+        {'range': INVOICE_NUM_CELL,    'values': [[invoice_number]]},
+        {'range': PROJECT_CELL,        'values': [[form_data['project']]]},
+        {'range': DUE_DATE_CELL,       'values': [[form_data['due_date']]]},
+    ]
+
+    for i, item in enumerate(items):
+        r = LINE_ITEMS_START_ROW + i
+        updates += [
+            {'range': f'{LINE_ITEM_DESC_COL}{r}',  'values': [[item['description']]]},
+            {'range': f'{LINE_ITEM_QTY_COL}{r}',   'values': [[item['qty']]]},
+            {'range': f'{LINE_ITEM_PRICE_COL}{r}', 'values': [[item['unit_price']]]},
+            {'range': f'{LINE_ITEM_TOTAL_COL}{r}', 'values': [[item['total']]]},
+        ]
+
+    sr = LINE_ITEMS_START_ROW + len(items)
+    updates += [
+        {'range': f'{SUBTOTAL_LABEL_COL}{sr}',     'values': [['Subtotal']]},
+        {'range': f'{SUBTOTAL_VALUE_COL}{sr}',     'values': [[f'${subtotal:,.2f}']]},
+        {'range': f'{SUBTOTAL_LABEL_COL}{sr + 1}', 'values': [['Adjustments']]},
+        {'range': f'{SUBTOTAL_VALUE_COL}{sr + 1}', 'values': [[f'${adj:,.2f}']]},
+        {'range': f'{SUBTOTAL_VALUE_COL}{sr + 2}', 'values': [[f'${total:,.2f}']]},
+    ]
+
+    note_lines = (form_data['notes'] or '').strip().split('\n')[:3]
+    for j, line in enumerate(note_lines):
+        updates.append({'range': f'{NOTES_COL}{sr + j}', 'values': [[line]]})
+
+    ws.batch_update(updates, value_input_option='USER_ENTERED')
+    return new_id
