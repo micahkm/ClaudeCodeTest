@@ -60,3 +60,48 @@ def get_clients(creds: Credentials):
     gc    = gspread.authorize(creds)
     drive = build('drive', 'v3', credentials=creds)
     return gc, drive
+
+
+def get_all_invoice_titles(drive) -> list:
+    """Return all Google Sheet titles that contain 'Invoice' (for numbering lookup)."""
+    resp = drive.files().list(
+        q="name contains 'Invoice' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false",
+        fields='files(name)',
+        pageSize=200,
+    ).execute()
+    return [f['name'] for f in resp.get('files', [])]
+
+
+def find_source_file(drive, prefix: str):
+    """Return (file_id, parent_folder_id) of highest-numbered invoice for prefix.
+    Falls back to 'Invoice TEMPLATE' if no prior invoices exist for this prefix."""
+    resp = drive.files().list(
+        q=f"name contains 'Invoice {prefix}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false",
+        fields='files(id, name, parents)',
+        pageSize=200,
+    ).execute()
+    files = resp.get('files', [])
+
+    pattern = re.compile(rf'^Invoice {re.escape(prefix)}(\d+)$', re.IGNORECASE)
+    numbered = []
+    for f in files:
+        m = pattern.match(f['name'].strip())
+        if m:
+            numbered.append((int(m.group(1)), f['id'], (f.get('parents') or [None])[0]))
+
+    if numbered:
+        numbered.sort(reverse=True)
+        _, file_id, parent_id = numbered[0]
+        return file_id, parent_id
+
+    # No prior invoices for this prefix — fall back to master template
+    tmpl = drive.files().list(
+        q="name = 'Invoice TEMPLATE' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false",
+        fields='files(id, parents)',
+    ).execute().get('files', [])
+    if not tmpl:
+        raise FileNotFoundError(
+            "No existing invoices found for this prefix and no 'Invoice TEMPLATE' found in Drive.\n"
+            "See SETUP.md for template setup instructions."
+        )
+    return tmpl[0]['id'], (tmpl[0].get('parents') or [None])[0]
