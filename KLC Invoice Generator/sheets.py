@@ -17,6 +17,22 @@ SCOPES = [
 CREDENTIALS_FILE = os.path.join(os.path.dirname(__file__), 'credentials.json')
 TOKEN_FILE       = os.path.join(os.path.dirname(__file__), 'token.json')
 
+# ── Cell position constants (verified against Invoice U015) ──────────────────
+SUBMITTED_DATE_CELL  = 'A7'
+CLIENT_NAME_CELL     = 'A9'
+INVOICE_NUM_CELL     = 'E9'
+PROJECT_CELL         = 'A11'
+DUE_DATE_CELL        = 'C11'
+LINE_ITEMS_START_ROW = 13
+LINE_ITEM_DESC_COL   = 'A'
+LINE_ITEM_QTY_COL    = 'D'
+LINE_ITEM_PRICE_COL  = 'E'
+LINE_ITEM_TOTAL_COL  = 'F'
+SUBTOTAL_LABEL_COL   = 'E'
+SUBTOTAL_VALUE_COL   = 'F'
+NOTES_COL            = 'A'
+CLEAR_RANGE          = 'A7:F50'
+
 
 def suggest_prefix(company_name: str) -> str:
     """Return first word of company name, uppercased, max 4 chars."""
