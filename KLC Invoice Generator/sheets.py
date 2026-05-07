@@ -122,7 +122,17 @@ def write_invoice_cells(gc, sheet_id: str, data: dict) -> None:
 
 
 def export_pdf(creds, file_id: str, dest_path: str) -> None:
-    raise NotImplementedError
+    """Exports a Google Sheet as PDF, saves to dest_path, and opens it."""
+    from google.auth.transport.requests import AuthorizedSession
+    url = (
+        f"https://docs.google.com/spreadsheets/d/{file_id}/export"
+        "?format=pdf&size=letter&portrait=true&fitw=true&gridlines=false"
+    )
+    session = AuthorizedSession(creds)
+    r = session.get(url)
+    r.raise_for_status()
+    Path(dest_path).write_bytes(r.content)
+    subprocess.run(["open", dest_path], check=True)
 
 
 def create_invoice(data: dict) -> tuple[str, str]:
