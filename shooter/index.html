@@ -48,6 +48,9 @@ const POWERUP_DEFS = {
   shield:       { id: 'shield',       color: '#42a5f5', icon: '◈' }
 };
 
+const EFFECT_COLORS = { speed_boost: '#fff176', damage_boost: '#ff7043', shield: '#42a5f5' };
+const EFFECT_ICONS  = { speed_boost: '⚡', damage_boost: '✦', shield: '◈' };
+
 // ─── INPUT HANDLER ────────────────────────────────────────────────────────────────
 class InputHandler {
   constructor(canvas) {
@@ -592,16 +595,14 @@ class Renderer {
     }
 
     // Active effects pills
-    const effectColors = { speed_boost: '#fff176', damage_boost: '#ff7043', shield: '#42a5f5' };
-    const effectIcons  = { speed_boost: '⚡', damage_boost: '✦', shield: '◈' };
     p.activeEffects.forEach((ef, i) => {
       const ex = 210 + i * 54;
-      ctx.fillStyle = effectColors[ef.type] + '44';
+      ctx.fillStyle = EFFECT_COLORS[ef.type] + '44';
       ctx.beginPath(); ctx.roundRect(ex, 6, 50, 20, 4); ctx.fill();
-      ctx.strokeStyle = effectColors[ef.type]; ctx.lineWidth = 1;
+      ctx.strokeStyle = EFFECT_COLORS[ef.type]; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.roundRect(ex, 6, 50, 20, 4); ctx.stroke();
-      ctx.fillStyle = effectColors[ef.type]; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText(`${effectIcons[ef.type]} ${Math.ceil(ef.timeLeft)}s`, ex + 25, 20);
+      ctx.fillStyle = EFFECT_COLORS[ef.type]; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(`${EFFECT_ICONS[ef.type]} ${Math.ceil(ef.timeLeft)}s`, ex + 25, 20);
     });
 
     // Money
@@ -747,15 +748,21 @@ class Game {
       case 'health_regen':
         p.regenRate += 2;
         break;
-      case 'speed_boost':
-        p.activeEffects.push({ type: 'speed_boost', timeLeft: 10 });
+      case 'speed_boost': {
+        const ex = p.activeEffects.find(e => e.type === 'speed_boost');
+        if (ex) ex.timeLeft = 10; else p.activeEffects.push({ type: 'speed_boost', timeLeft: 10 });
         break;
-      case 'damage_boost':
-        p.activeEffects.push({ type: 'damage_boost', timeLeft: 10 });
+      }
+      case 'damage_boost': {
+        const ex = p.activeEffects.find(e => e.type === 'damage_boost');
+        if (ex) ex.timeLeft = 10; else p.activeEffects.push({ type: 'damage_boost', timeLeft: 10 });
         break;
-      case 'shield':
-        p.activeEffects.push({ type: 'shield', timeLeft: 5 });
+      }
+      case 'shield': {
+        const ex = p.activeEffects.find(e => e.type === 'shield');
+        if (ex) ex.timeLeft = 5; else p.activeEffects.push({ type: 'shield', timeLeft: 5 });
         break;
+      }
     }
   }
 
