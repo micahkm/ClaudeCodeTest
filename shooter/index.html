@@ -91,6 +91,83 @@ class Projectile {
   }
 }
 
+// ─── ENEMY ────────────────────────────────────────────────────────────────────
+class Enemy {
+  constructor(type, x, y) {
+    const def = ENEMY_DEFS[type];
+    Object.assign(this, def);
+    this.x = x; this.y = y;
+    this.maxHp = def.hp;
+    this.hp = def.hp;
+    this.alive = true;
+    this.flashTimer = 0;
+    this.fireTimer = Math.random() * this.shootRate;
+  }
+
+  update(dt, player, projectiles) {
+    if (this.flashTimer > 0) this.flashTimer -= dt;
+    const dx = player.x - this.x, dy = player.y - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (this.type === 'shooter') {
+      if (dist > this.shootRange) {
+        const nx = dx / dist, ny = dy / dist;
+        this.x += nx * this.speed * dt;
+        this.y += ny * this.speed * dt;
+      }
+      this.fireTimer -= dt;
+      if (this.fireTimer <= 0 && dist <= this.shootRange + 50) {
+        this.fireTimer = this.shootRate;
+        const angle = Math.atan2(dy, dx);
+        projectiles.push(new Projectile(
+          this.x + Math.cos(angle) * (this.size + 5),
+          this.y + Math.sin(angle) * (this.size + 5),
+          Math.cos(angle) * 180, Math.sin(angle) * 180,
+          this.contactDamage, 6, '#ce93d8', true, 0
+        ));
+      }
+    } else {
+      if (dist > 0) {
+        const nx = dx / dist, ny = dy / dist;
+        this.x += nx * this.speed * dt;
+        this.y += ny * this.speed * dt;
+      }
+    }
+
+    this.x = Math.max(ARENA.x + this.size, Math.min(ARENA.x + ARENA.w - this.size, this.x));
+    this.y = Math.max(ARENA.y + this.size, Math.min(ARENA.y + ARENA.h - this.size, this.y));
+  }
+
+  takeDamage(amount) {
+    this.hp -= amount;
+    this.flashTimer = 0.08;
+    if (this.hp <= 0) { this.hp = 0; this.alive = false; }
+  }
+
+  render(ctx) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    const flash = this.flashTimer > 0;
+    if (this.shape === 'circle') {
+      ctx.beginPath(); ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+      ctx.fillStyle = flash ? '#ffffff' : this.color; ctx.fill();
+      ctx.strokeStyle = this.borderColor; ctx.lineWidth = 2; ctx.stroke();
+    } else {
+      const s = this.size;
+      ctx.fillStyle = flash ? '#ffffff' : this.color;
+      ctx.beginPath(); ctx.roundRect(-s, -s, s * 2, s * 2, 4); ctx.fill();
+      ctx.strokeStyle = this.borderColor; ctx.lineWidth = 2; ctx.stroke();
+    }
+    // Health bar
+    const bw = this.size * 2 + 4;
+    const bx = -bw / 2, by = -this.size - 9;
+    ctx.fillStyle = '#333'; ctx.fillRect(bx, by, bw, 4);
+    ctx.fillStyle = this.hp / this.maxHp > 0.5 ? '#66bb6a' : '#ef5350';
+    ctx.fillRect(bx, by, bw * (this.hp / this.maxHp), 4);
+    ctx.restore();
+  }
+}
+
 // ─── PLAYER ───────────────────────────────────────────────────────────────────
 class Player {
   constructor() {
@@ -175,6 +252,7 @@ class Game {
     this.input = new InputHandler(this.canvas);
     this.player = new Player();
     this.projectiles = [];
+    this.enemies = [new Enemy('runner', 100, 200), new Enemy('tank', 600, 150), new Enemy('shooter', 700, 400)];
     this.lastTime = 0;
     this._loop = this._loop.bind(this);
   }
@@ -186,10 +264,12 @@ class Game {
     if (this.input.mouse.down) this.player.tryShoot(this.projectiles);
     this.projectiles = this.projectiles.filter(p => p.alive);
     for (const p of this.projectiles) p.update(dt);
+    for (const e of this.enemies) { e.update(dt, this.player, this.projectiles); }
     const ctx = this.ctx;
     ctx.fillStyle = '#dcedc8'; ctx.fillRect(0, 0, 800, 600);
     this.player.render(ctx);
     for (const p of this.projectiles) p.render(ctx);
+    for (const e of this.enemies) { e.render(ctx); }
     this.input.endFrame();
     requestAnimationFrame(this._loop);
   }
