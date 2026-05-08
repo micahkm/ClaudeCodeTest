@@ -26,9 +26,9 @@ const WEAPON_DEFS = {
 };
 
 const ENEMY_DEFS = {
-  runner:  { type: 'runner',  hp: 30,  speed: 150, size: 10, color: '#ef5350', borderColor: '#b71c1c', reward: 5,  contactDamage: 8,  shape: 'circle', shootRange: 0,   shootRate: 0   },
-  tank:    { type: 'tank',    hp: 120, speed: 55,  size: 18, color: '#8d6e63', borderColor: '#4e342e', reward: 15, contactDamage: 20, shape: 'square', shootRange: 0,   shootRate: 0   },
-  shooter: { type: 'shooter', hp: 60,  speed: 80,  size: 13, color: '#ab47bc', borderColor: '#6a1b9a', reward: 10, contactDamage: 5,  shape: 'circle', shootRange: 220, shootRate: 2.0 }
+  runner:  { type: 'runner',  hp: 30,  speed: 150, size: 10, color: '#ef5350', borderColor: '#b71c1c', reward: 5,  contactDamage: 8,  shape: 'circle', shootRange: 0,   shootRate: 0,   dropChance: 0.15, dropPool: ['health_boost','health_boost','speed_boost','speed_boost','health_regen'] },
+  tank:    { type: 'tank',    hp: 120, speed: 55,  size: 18, color: '#8d6e63', borderColor: '#4e342e', reward: 15, contactDamage: 20, shape: 'square', shootRange: 0,   shootRate: 0,   dropChance: 0.25, dropPool: ['health_regen','health_regen','damage_boost','damage_boost','health_boost'] },
+  shooter: { type: 'shooter', hp: 60,  speed: 80,  size: 13, color: '#ab47bc', borderColor: '#6a1b9a', reward: 10, contactDamage: 5,  shape: 'circle', shootRange: 220, shootRate: 2.0, dropChance: 0.20, dropPool: ['shield','shield','damage_boost','damage_boost','health_regen'] }
 };
 
 const UPGRADE_DEFS = [
@@ -648,6 +648,7 @@ class Game {
     this.spawnTimer = 0;
     this.wave = 0;
     this.killCount = 0;
+    this.powerups = [];
     this.state = GAME_STATES.MENU;
     this.lastTime = 0;
     this._loop = this._loop.bind(this);
@@ -669,6 +670,7 @@ class Game {
     this.projectiles = [];
     this.particles = new ParticleSystem();
     this.killCount = 0;
+    this.powerups = [];
     this._startWave(1);
   }
 
@@ -676,6 +678,7 @@ class Game {
     this.wave = n;
     this.enemies = [];
     this.projectiles = [];
+    this.powerups = [];
     const counts = { runner: n, tank: Math.floor(n / 2), shooter: Math.floor(n / 3) };
     this.spawnQueue = [];
     Object.entries(counts).forEach(([type, c]) => {
