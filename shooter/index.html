@@ -350,6 +350,132 @@ class Player {
   }
 }
 
+// ─── SHOP ─────────────────────────────────────────────────────────────────────
+class Shop {
+  constructor() {
+    this.slideY = -340;
+    this.targetY = 0;
+    this.isOpen = false;
+  }
+
+  open() {
+    this.slideY = -340;
+    this.targetY = 0;
+    this.isOpen = true;
+  }
+
+  update(dt) {
+    if (this.isOpen) this.slideY += (this.targetY - this.slideY) * Math.min(dt * 10, 1);
+  }
+
+  handleClick(mx, my, player, onNextWave) {
+    if (!this.isOpen) return;
+    const panelX = 50, panelY = 70 + this.slideY;
+
+    const weaponIds = Object.keys(WEAPON_DEFS).filter(id =>
+      id !== 'pistol' && !player.weapons.find(w => w.id === id)
+    );
+    weaponIds.forEach((id, i) => {
+      const bx = panelX + 10 + i * 170, by = panelY + 78;
+      if (mx>=bx && mx<=bx+160 && my>=by && my<=by+68) {
+        const def = WEAPON_DEFS[id];
+        if (player.money >= def.cost && player.weapons.length < 4) {
+          player.money -= def.cost;
+          player.weapons.push({ ...def, upgrades: { damage: 0, fireRate: 0, speed: 0, size: 0 } });
+        }
+      }
+    });
+
+    const w = player.weapons[player.activeWeapon];
+    UPGRADE_DEFS.forEach((upg, i) => {
+      const bx = panelX + 10 + i * 170, by = panelY + 198;
+      if (mx>=bx && mx<=bx+160 && my>=by && my<=by+68) {
+        const level = w.upgrades[upg.id] || 0;
+        if (level < 3 && player.money >= upg.cost) {
+          player.money -= upg.cost;
+          w.upgrades[upg.id] = level + 1;
+          upg.apply(w);
+        }
+      }
+    });
+
+    const nbx = 325, nby = panelY + 288;
+    if (mx>=nbx && mx<=nbx+150 && my>=nby && my<=nby+40) {
+      this.isOpen = false;
+      onNextWave();
+    }
+  }
+
+  render(ctx, player) {
+    if (!this.isOpen) return;
+    const panelX = 50, panelY = 70 + this.slideY;
+    const panelW = 700, panelH = 340;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,249,196,0.97)';
+    ctx.strokeStyle = '#f9a825'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.roundRect(panelX, panelY, panelW, panelH, 12); ctx.fill(); ctx.stroke();
+
+    ctx.fillStyle = '#f57f17'; ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText(`🛒  SHOP — Wave Complete!   💰 $${player.money}`, panelX + 16, panelY + 30);
+
+    // New weapons
+    ctx.fillStyle = '#388e3c'; ctx.font = 'bold 13px sans-serif';
+    ctx.fillText('NEW WEAPONS', panelX + 10, panelY + 66);
+    const weaponIds = Object.keys(WEAPON_DEFS).filter(id =>
+      id !== 'pistol' && !player.weapons.find(w => w.id === id)
+    );
+    weaponIds.forEach((id, i) => {
+      const def = WEAPON_DEFS[id];
+      const bx = panelX + 10 + i * 170, by = panelY + 74;
+      const canAfford = player.money >= def.cost && player.weapons.length < 4;
+      ctx.fillStyle = canAfford ? '#fff' : '#f0f0f0';
+      ctx.strokeStyle = canAfford ? '#81c784' : '#ccc'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(bx, by, 160, 68, 6); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = canAfford ? '#1b5e20' : '#aaa';
+      ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(def.name, bx + 80, by + 26);
+      ctx.fillStyle = canAfford ? '#388e3c' : '#bbb';
+      ctx.font = '12px sans-serif';
+      ctx.fillText(`$${def.cost}`, bx + 80, by + 48);
+    });
+    if (weaponIds.length === 0) {
+      ctx.fillStyle = '#888'; ctx.font = '13px sans-serif'; ctx.textAlign = 'left';
+      ctx.fillText('All weapons purchased!', panelX + 14, panelY + 118);
+    }
+
+    // Upgrades
+    const w = player.weapons[player.activeWeapon];
+    ctx.fillStyle = '#1565c0'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText(`UPGRADES — ${w.name} (active)`, panelX + 10, panelY + 190);
+    UPGRADE_DEFS.forEach((upg, i) => {
+      const level = w.upgrades[upg.id] || 0;
+      const bx = panelX + 10 + i * 170, by = panelY + 196;
+      const canAfford = player.money >= upg.cost && level < 3;
+      ctx.fillStyle = canAfford ? '#fff' : '#f0f0f0';
+      ctx.strokeStyle = canAfford ? '#42a5f5' : '#ccc'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(bx, by, 160, 68, 6); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = canAfford ? '#0d47a1' : '#aaa';
+      ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(upg.name, bx + 80, by + 22);
+      ctx.fillStyle = '#ffa726'; ctx.font = '15px sans-serif';
+      ctx.fillText('★'.repeat(level) + '☆'.repeat(3 - level), bx + 80, by + 44);
+      ctx.fillStyle = canAfford ? '#1565c0' : '#bbb';
+      ctx.font = '12px sans-serif';
+      ctx.fillText(level >= 3 ? 'MAX' : `$${upg.cost}`, bx + 80, by + 62);
+    });
+
+    // Next Wave button
+    const nbx = panelX + (panelW - 150) / 2, nby = panelY + 286;
+    ctx.fillStyle = '#388e3c';
+    ctx.beginPath(); ctx.roundRect(nbx, nby, 150, 40, 8); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('▶  Next Wave', nbx + 75, nby + 26);
+
+    ctx.restore();
+  }
+}
+
 // ─── GAME (wave system, no full renderer yet) ─────────────────────────────────
 class Game {
   constructor() {
@@ -360,6 +486,7 @@ class Game {
     this.enemies = [];
     this.projectiles = [];
     this.particles = new ParticleSystem();
+    this.shop = new Shop();
     this.spawnQueue = [];
     this.spawnTimer = 0;
     this.wave = 0;
@@ -409,6 +536,18 @@ class Game {
   }
 
   _update(dt) {
+    if (this.state === GAME_STATES.SHOP) {
+      this.shop.update(dt);
+      if (this.input.mouse.clicked) {
+        this.shop.handleClick(this.input.mouse.x, this.input.mouse.y, this.player, () => {
+          this._startWave(this.wave + 1);
+        });
+      }
+      this.particles.update(dt);
+      this.input.endFrame();
+      return;
+    }
+
     if (this.state !== GAME_STATES.PLAYING) { this.input.endFrame(); return; }
 
     this.player.update(dt, this.input);
@@ -449,9 +588,9 @@ class Game {
     this.projectiles = this.projectiles.filter(p => p.alive);
 
     if (this.player.hp <= 0) { this.player.hp = 0; this.state = GAME_STATES.GAME_OVER; }
-    if (this.enemies.length === 0 && this.spawnQueue.length === 0) {
-      this.state = GAME_STATES.SHOP; // shop not built yet — just advance wave
-      setTimeout(() => this._startWave(this.wave + 1), 1500);
+    if (this.enemies.length === 0 && this.spawnQueue.length === 0 && this.state === GAME_STATES.PLAYING) {
+      this.state = GAME_STATES.SHOP;
+      this.shop.open();
     }
 
     this.particles.update(dt);
@@ -468,6 +607,7 @@ class Game {
     for (const p of this.projectiles) p.render(ctx);
     this.player.render(ctx);
     this.particles.render(ctx);
+    this.shop.render(ctx, this.player);
     ctx.restore();
     // Temp HUD (outside shake)
     ctx.fillStyle = '#388e3c'; ctx.fillRect(0, 0, 800, HUD_H);
