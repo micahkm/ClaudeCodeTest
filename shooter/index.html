@@ -556,6 +556,7 @@ class Renderer {
 
     if (game.player) {
       for (const e of game.enemies) e.render(ctx);
+      for (const pu of game.powerups) pu.render(ctx);
       for (const p of game.projectiles) p.render(ctx);
       game.player.render(ctx);
       game.particles.render(ctx);
@@ -583,6 +584,25 @@ class Renderer {
     ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1; ctx.strokeRect(10, 8, 120, 18);
     ctx.fillStyle = '#fff'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
     ctx.fillText(`❤ ${Math.ceil(p.hp)}`, 70, 22);
+
+    // Regen indicator
+    if (p.regenRate > 0) {
+      ctx.fillStyle = '#66bb6a'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'left';
+      ctx.fillText(`↑+${p.regenRate}/s`, 12, 36);
+    }
+
+    // Active effects pills
+    const effectColors = { speed_boost: '#fff176', damage_boost: '#ff7043', shield: '#42a5f5' };
+    const effectIcons  = { speed_boost: '⚡', damage_boost: '✦', shield: '◈' };
+    p.activeEffects.forEach((ef, i) => {
+      const ex = 210 + i * 54;
+      ctx.fillStyle = effectColors[ef.type] + '44';
+      ctx.beginPath(); ctx.roundRect(ex, 6, 50, 20, 4); ctx.fill();
+      ctx.strokeStyle = effectColors[ef.type]; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(ex, 6, 50, 20, 4); ctx.stroke();
+      ctx.fillStyle = effectColors[ef.type]; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(`${effectIcons[ef.type]} ${Math.ceil(ef.timeLeft)}s`, ex + 25, 20);
+    });
 
     // Money
     ctx.fillStyle = '#fff176'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'left';
