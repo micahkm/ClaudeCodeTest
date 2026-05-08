@@ -40,11 +40,108 @@ const UPGRADE_DEFS = [
 
 const BUBBLE_COLORS = ['#ef5350','#42a5f5','#66bb6a','#ffa726','#ab47bc','#26c6da','#ff7043','#fff176'];
 
-// ─── STUB GAME ────────────────────────────────────────────────────────────────
+// ─── INPUT HANDLER ────────────────────────────────────────────────────────────────
+class InputHandler {
+  constructor(canvas) {
+    this.keys = new Set();
+    this.mouse = { x: 400, y: 300, clicked: false, down: false };
+    window.addEventListener('keydown', e => { this.keys.add(e.key.toLowerCase()); e.preventDefault(); });
+    window.addEventListener('keyup',   e => this.keys.delete(e.key.toLowerCase()));
+    canvas.addEventListener('mousemove', e => {
+      const r = canvas.getBoundingClientRect();
+      this.mouse.x = e.clientX - r.left;
+      this.mouse.y = e.clientY - r.top;
+    });
+    canvas.addEventListener('mousedown', e => { if (e.button === 0) { this.mouse.down = true; this.mouse.clicked = true; } });
+    canvas.addEventListener('mouseup',   e => { if (e.button === 0) this.mouse.down = false; });
+  }
+  endFrame() { this.mouse.clicked = false; }
+}
+
+// ─── PLAYER ───────────────────────────────────────────────────────────────────
+class Player {
+  constructor() {
+    this.x = ARENA.x + ARENA.w / 2;
+    this.y = ARENA.y + ARENA.h / 2;
+    this.hp = 100;
+    this.maxHp = 100;
+    this.speed = 150;
+    this.money = 0;
+    this.aimAngle = 0;
+    this.muzzleFlash = 0;
+    this.weapons = [this._makeWeapon('pistol')];
+    this.activeWeapon = 0;
+    this.fireCooldown = 0;
+  }
+
+  _makeWeapon(id) {
+    return { ...WEAPON_DEFS[id], upgrades: { damage: 0, fireRate: 0, speed: 0, size: 0 } };
+  }
+
+  get weapon() { return this.weapons[this.activeWeapon]; }
+
+  update(dt, input) {
+    const spd = this.speed;
+    if (input.keys.has('w') || input.keys.has('arrowup'))    this.y -= spd * dt;
+    if (input.keys.has('s') || input.keys.has('arrowdown'))  this.y += spd * dt;
+    if (input.keys.has('a') || input.keys.has('arrowleft'))  this.x -= spd * dt;
+    if (input.keys.has('d') || input.keys.has('arrowright')) this.x += spd * dt;
+    const r = 12;
+    this.x = Math.max(ARENA.x + r, Math.min(ARENA.x + ARENA.w - r, this.x));
+    this.y = Math.max(ARENA.y + r, Math.min(ARENA.y + ARENA.h - r, this.y));
+    this.aimAngle = Math.atan2(input.mouse.y - this.y, input.mouse.x - this.x);
+    ['1','2','3','4'].forEach((k, i) => {
+      if (input.keys.has(k) && i < this.weapons.length) this.activeWeapon = i;
+    });
+    if (this.fireCooldown > 0) this.fireCooldown -= dt;
+    if (this.muzzleFlash > 0) this.muzzleFlash -= dt;
+  }
+
+  tryShoot(projectiles) {
+    const w = this.weapon;
+    if (this.fireCooldown > 0) return;
+    this.fireCooldown = w.fireRate;
+    this.muzzleFlash = 0.08;
+    for (let i = 0; i < w.count; i++) {
+      const angle = this.aimAngle + (Math.random() - 0.5) * w.spread * 2;
+      projectiles.push(new Projectile(
+        this.x + Math.cos(this.aimAngle) * 20,
+        this.y + Math.sin(this.aimAngle) * 20,
+        Math.cos(angle) * w.bulletSpeed,
+        Math.sin(angle) * w.bulletSpeed,
+        w.damage, w.bulletSize, w.color, false, w.splash
+      ));
+    }
+  }
+
+  render(ctx) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.beginPath(); ctx.ellipse(0, 7, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2);
+    ctx.fillStyle = '#42a5f5'; ctx.fill();
+    ctx.strokeStyle = '#1565c0'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.rotate(this.aimAngle);
+    ctx.fillStyle = '#ff7043';
+    ctx.beginPath(); ctx.roundRect(8, -3, 18, 6, 2); ctx.fill();
+    ctx.strokeStyle = '#bf360c'; ctx.lineWidth = 1; ctx.stroke();
+    if (this.muzzleFlash > 0) {
+      ctx.fillStyle = 'rgba(255,241,118,0.9)';
+      ctx.beginPath(); ctx.arc(27, 0, 7, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+// ─── GAME ─────────────────────────────────────────────────────────────────────
 class Game {
   constructor() {
     this.canvas = document.getElementById('gameCanvas');
     this.ctx = this.canvas.getContext('2d');
+    this.input = new InputHandler(this.canvas);
+    this.player = new Player();
+    this.projectiles = [];
     this.lastTime = 0;
     this._loop = this._loop.bind(this);
   }
@@ -52,13 +149,14 @@ class Game {
   _loop(ts) {
     const dt = Math.min((ts - this.lastTime) / 1000, 0.05);
     this.lastTime = ts;
+    this.player.update(dt, this.input);
+    // Commenting out tryShoot for now - Projectile class doesn't exist yet (Task 3)
+    // if (this.input.mouse.down) this.player.tryShoot(this.projectiles);
+    this.projectiles = this.projectiles.filter(p => p.alive);
     const ctx = this.ctx;
-    ctx.fillStyle = '#c8e6c9';
-    ctx.fillRect(0, 0, 800, 600);
-    ctx.fillStyle = '#388e3c';
-    ctx.font = 'bold 24px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('Bubble Shooter — scaffolding OK', 400, 310);
+    ctx.fillStyle = '#dcedc8'; ctx.fillRect(0, 0, 800, 600);
+    this.player.render(ctx);
+    this.input.endFrame();
     requestAnimationFrame(this._loop);
   }
 }
