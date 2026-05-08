@@ -262,14 +262,80 @@ class Game {
     this.lastTime = ts;
     this.player.update(dt, this.input);
     if (this.input.mouse.down) this.player.tryShoot(this.projectiles);
-    this.projectiles = this.projectiles.filter(p => p.alive);
     for (const p of this.projectiles) p.update(dt);
     for (const e of this.enemies) { e.update(dt, this.player, this.projectiles); }
+
+    // ─── COLLISION DETECTION ──────────────────────────────────────────────────
+    // Bullet vs enemy
+    for (const p of this.projectiles) {
+      if (p.fromEnemy || !p.alive) continue;
+      if (p.splash > 0) {
+        // Splash damage: check for any hit first
+        let hit = false;
+        for (const e of this.enemies) {
+          if (!e.alive) continue;
+          const dx = p.x - e.x, dy = p.y - e.y;
+          if (Math.sqrt(dx*dx + dy*dy) < p.size + e.size) { hit = true; break; }
+        }
+        // If hit, apply splash to all enemies in radius
+        if (hit) {
+          for (const e of this.enemies) {
+            const dx = p.x - e.x, dy = p.y - e.y;
+            if (Math.sqrt(dx*dx + dy*dy) < p.splash) e.takeDamage(p.damage);
+          }
+          p.alive = false;
+        }
+      } else {
+        // Single-target damage
+        for (const e of this.enemies) {
+          if (!e.alive) continue;
+          const dx = p.x - e.x, dy = p.y - e.y;
+          if (Math.sqrt(dx*dx + dy*dy) < p.size + e.size) {
+            e.takeDamage(p.damage);
+            p.alive = false;
+            break;
+          }
+        }
+      }
+    }
+
+    // Enemy vs player contact
+    for (const e of this.enemies) {
+      if (!e.alive) continue;
+      const dx = this.player.x - e.x, dy = this.player.y - e.y;
+      if (Math.sqrt(dx*dx + dy*dy) < 12 + e.size) {
+        this.player.hp -= e.contactDamage * dt * 3;
+      }
+    }
+
+    // Enemy projectile vs player
+    for (const p of this.projectiles) {
+      if (!p.fromEnemy || !p.alive) continue;
+      const dx = p.x - this.player.x, dy = p.y - this.player.y;
+      if (Math.sqrt(dx*dx + dy*dy) < p.size + 12) {
+        this.player.hp -= p.damage;
+        p.alive = false;
+      }
+    }
+
+    // Kill rewards + cleanup
+    for (const e of this.enemies) {
+      if (!e.alive) this.player.money += e.reward;
+    }
+    this.enemies = this.enemies.filter(e => e.alive);
+    this.projectiles = this.projectiles.filter(p => p.alive);
+
+    // ─── RENDERING ────────────────────────────────────────────────────────────
     const ctx = this.ctx;
     ctx.fillStyle = '#dcedc8'; ctx.fillRect(0, 0, 800, 600);
     this.player.render(ctx);
     for (const p of this.projectiles) p.render(ctx);
     for (const e of this.enemies) { e.render(ctx); }
+
+    // Money readout
+    ctx.fillStyle = '#333'; ctx.font = '16px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('$' + this.player.money, 10, 30);
+
     this.input.endFrame();
     requestAnimationFrame(this._loop);
   }
