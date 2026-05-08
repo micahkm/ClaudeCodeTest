@@ -641,6 +641,7 @@ class Game {
     }
     this.spawnTimer = 0.5;
     this.state = GAME_STATES.PLAYING;
+    this.input.mouse.down = false;
   }
 
   _spawnEnemy(type) {
