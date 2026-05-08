@@ -58,6 +58,39 @@ class InputHandler {
   endFrame() { this.mouse.clicked = false; }
 }
 
+// ─── PROJECTILE ───────────────────────────────────────────────────────────────
+class Projectile {
+  constructor(x, y, vx, vy, damage, size, color, fromEnemy = false, splash = 0) {
+    this.x = x; this.y = y;
+    this.vx = vx; this.vy = vy;
+    this.damage = damage;
+    this.size = size;
+    this.color = color;
+    this.fromEnemy = fromEnemy;
+    this.splash = splash;
+    this.alive = true;
+  }
+
+  update(dt) {
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    if (this.x < ARENA.x - 20 || this.x > ARENA.x + ARENA.w + 20 ||
+        this.y < ARENA.y - 20 || this.y > ARENA.y + ARENA.h + 20) {
+      this.alive = false;
+    }
+  }
+
+  render(ctx) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fillStyle = this.color; ctx.fill();
+    if (this.splash > 0) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 2; ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
 // ─── PLAYER ───────────────────────────────────────────────────────────────────
 class Player {
   constructor() {
@@ -150,12 +183,13 @@ class Game {
     const dt = Math.min((ts - this.lastTime) / 1000, 0.05);
     this.lastTime = ts;
     this.player.update(dt, this.input);
-    // Commenting out tryShoot for now - Projectile class doesn't exist yet (Task 3)
-    // if (this.input.mouse.down) this.player.tryShoot(this.projectiles);
+    if (this.input.mouse.down) this.player.tryShoot(this.projectiles);
     this.projectiles = this.projectiles.filter(p => p.alive);
+    for (const p of this.projectiles) p.update(dt);
     const ctx = this.ctx;
     ctx.fillStyle = '#dcedc8'; ctx.fillRect(0, 0, 800, 600);
     this.player.render(ctx);
+    for (const p of this.projectiles) p.render(ctx);
     this.input.endFrame();
     requestAnimationFrame(this._loop);
   }
