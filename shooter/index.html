@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bubble Shooter</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #1a1a2e; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    canvas { display: block; border-radius: 8px; }
+  </style>
+</head>
+<body>
+<canvas id="gameCanvas" width="800" height="600"></canvas>
+<script>
+
+// ─── CONSTANTS ───────────────────────────────────────────────────────────────
+const GAME_STATES = { MENU: 'menu', PLAYING: 'playing', SHOP: 'shop', GAME_OVER: 'game_over' };
+const ARENA = { x: 0, y: 40, w: 800, h: 560 };
+const HUD_H = 40;
+
+const WEAPON_DEFS = {
+  pistol:  { id: 'pistol',  name: 'Pistol',         damage: 10, fireRate: 0.3,  bulletSpeed: 500, bulletSize: 5,  spread: 0,    count: 1, cost: 0,   color: '#fff176', splash: 0 },
+  shotgun: { id: 'shotgun', name: 'Shotgun',         damage: 8,  fireRate: 0.8,  bulletSpeed: 400, bulletSize: 5,  spread: 0.3,  count: 5, cost: 100, color: '#ff8a65', splash: 0 },
+  smg:     { id: 'smg',     name: 'SMG',             damage: 5,  fireRate: 0.1,  bulletSpeed: 600, bulletSize: 4,  spread: 0.05, count: 1, cost: 80,  color: '#80cbc4', splash: 0 },
+  rocket:  { id: 'rocket',  name: 'Rocket Launcher', damage: 40, fireRate: 1.5,  bulletSpeed: 250, bulletSize: 12, spread: 0,    count: 1, cost: 150, color: '#ef5350', splash: 80 }
+};
+
+const ENEMY_DEFS = {
+  runner:  { type: 'runner',  hp: 30,  speed: 150, size: 10, color: '#ef5350', borderColor: '#b71c1c', reward: 5,  contactDamage: 8,  shape: 'circle', shootRange: 0,   shootRate: 0   },
+  tank:    { type: 'tank',    hp: 120, speed: 55,  size: 18, color: '#8d6e63', borderColor: '#4e342e', reward: 15, contactDamage: 20, shape: 'square', shootRange: 0,   shootRate: 0   },
+  shooter: { type: 'shooter', hp: 60,  speed: 80,  size: 13, color: '#ab47bc', borderColor: '#6a1b9a', reward: 10, contactDamage: 5,  shape: 'circle', shootRange: 220, shootRate: 2.0 }
+};
+
+const UPGRADE_DEFS = [
+  { id: 'damage',   name: 'Damage+',       cost: 60, apply: w => { w.damage      *= 1.25; } },
+  { id: 'fireRate', name: 'Fire Rate+',    cost: 75, apply: w => { w.fireRate    *= 0.8;  } },
+  { id: 'speed',    name: 'Bullet Speed+', cost: 50, apply: w => { w.bulletSpeed *= 1.3;  } },
+  { id: 'size',     name: 'Bullet Size+',  cost: 40, apply: w => { w.bulletSize  *= 1.2;  } }
+];
+
+const BUBBLE_COLORS = ['#ef5350','#42a5f5','#66bb6a','#ffa726','#ab47bc','#26c6da','#ff7043','#fff176'];
+
+// ─── STUB GAME ────────────────────────────────────────────────────────────────
+class Game {
+  constructor() {
+    this.canvas = document.getElementById('gameCanvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.lastTime = 0;
+    this._loop = this._loop.bind(this);
+  }
+  start() { requestAnimationFrame(this._loop); }
+  _loop(ts) {
+    const dt = Math.min((ts - this.lastTime) / 1000, 0.05);
+    this.lastTime = ts;
+    const ctx = this.ctx;
+    ctx.fillStyle = '#c8e6c9';
+    ctx.fillRect(0, 0, 800, 600);
+    ctx.fillStyle = '#388e3c';
+    ctx.font = 'bold 24px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Bubble Shooter — scaffolding OK', 400, 310);
+    requestAnimationFrame(this._loop);
+  }
+}
+
+new Game().start();
+</script>
+</body>
+</html>
