@@ -334,6 +334,8 @@ class Player {
     this.weapons = [this._makeWeapon('pistol')];
     this.activeWeapon = 0;
     this.fireCooldown = 0;
+    this.regenRate = 0;
+    this.activeEffects = [];
   }
 
   _makeWeapon(id) {
@@ -341,9 +343,12 @@ class Player {
   }
 
   get weapon() { return this.weapons[this.activeWeapon]; }
+  get isShielded()       { return this.activeEffects.some(e => e.type === 'shield'); }
+  get damageMultiplier() { return this.activeEffects.some(e => e.type === 'damage_boost') ? 1.5 : 1.0; }
+  get effectiveSpeed()   { return this.speed * (this.activeEffects.some(e => e.type === 'speed_boost') ? 1.5 : 1.0); }
 
   update(dt, input) {
-    const spd = this.speed;
+    const spd = this.effectiveSpeed;
     if (input.keys.has('w') || input.keys.has('arrowup'))    this.y -= spd * dt;
     if (input.keys.has('s') || input.keys.has('arrowdown'))  this.y += spd * dt;
     if (input.keys.has('a') || input.keys.has('arrowleft'))  this.x -= spd * dt;
@@ -357,6 +362,8 @@ class Player {
     });
     if (this.fireCooldown > 0) this.fireCooldown -= dt;
     if (this.muzzleFlash > 0) this.muzzleFlash -= dt;
+    this.hp = Math.min(this.maxHp, this.hp + this.regenRate * dt);
+    this.activeEffects = this.activeEffects.filter(e => { e.timeLeft -= dt; return e.timeLeft > 0; });
   }
 
   tryShoot(projectiles) {
@@ -371,7 +378,7 @@ class Player {
         this.y + Math.sin(this.aimAngle) * 20,
         Math.cos(angle) * w.bulletSpeed,
         Math.sin(angle) * w.bulletSpeed,
-        w.damage, w.bulletSize, w.color, false, w.splash
+        w.damage * this.damageMultiplier, w.bulletSize, w.color, false, w.splash
       ));
     }
   }
