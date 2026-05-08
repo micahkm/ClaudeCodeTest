@@ -716,6 +716,29 @@ class Game {
     this.shop.open();
   }
 
+  _applyPowerup(pu) {
+    const p = this.player;
+    const labels = { health_boost: '+30 HP', health_regen: '↑Regen', speed_boost: '⚡Speed', damage_boost: '✦Dmg', shield: '◈Shield' };
+    this.particles.addFloatingText(p.x, p.y - 20, labels[pu.type]);
+    switch (pu.type) {
+      case 'health_boost':
+        p.hp = Math.min(p.maxHp, p.hp + 30);
+        break;
+      case 'health_regen':
+        p.regenRate += 2;
+        break;
+      case 'speed_boost':
+        p.activeEffects.push({ type: 'speed_boost', timeLeft: 10 });
+        break;
+      case 'damage_boost':
+        p.activeEffects.push({ type: 'damage_boost', timeLeft: 10 });
+        break;
+      case 'shield':
+        p.activeEffects.push({ type: 'shield', timeLeft: 5 });
+        break;
+    }
+  }
+
   _update(dt) {
     if (this.state === GAME_STATES.MENU) {
       if (this.input.mouse.clicked) this._startGame();
@@ -785,11 +808,13 @@ class Game {
     }
 
     // Enemy vs player contact
-    for (const e of this.enemies) {
-      if (!e.alive) continue;
-      const dx = this.player.x - e.x, dy = this.player.y - e.y;
-      if (Math.sqrt(dx*dx + dy*dy) < 12 + e.size) {
-        this.player.hp -= e.contactDamage * dt * 3;
+    if (!this.player.isShielded) {
+      for (const e of this.enemies) {
+        if (!e.alive) continue;
+        const dx = this.player.x - e.x, dy = this.player.y - e.y;
+        if (Math.sqrt(dx*dx + dy*dy) < 12 + e.size) {
+          this.player.hp -= e.contactDamage * dt * 3;
+        }
       }
     }
 
@@ -798,9 +823,11 @@ class Game {
       if (!p.fromEnemy || !p.alive) continue;
       const dx = p.x - this.player.x, dy = p.y - this.player.y;
       if (Math.sqrt(dx*dx + dy*dy) < p.size + 12) {
-        this.player.hp -= p.damage;
         p.alive = false;
-        this.particles.addShake();
+        if (!this.player.isShielded) {
+          this.player.hp -= p.damage;
+          this.particles.addShake();
+        }
       }
     }
 
@@ -811,12 +838,28 @@ class Game {
         this.killCount++;
         this.particles.addBubbleBurst(e.x, e.y);
         this.particles.addFloatingText(e.x, e.y, `+$${e.reward}`);
+        if (Math.random() < e.dropChance) {
+          const type = e.dropPool[Math.floor(Math.random() * e.dropPool.length)];
+          this.powerups.push(new Powerup(e.x, e.y, type));
+        }
       }
     }
     this.enemies = this.enemies.filter(e => e.alive);
     this.projectiles = this.projectiles.filter(p => p.alive);
 
     this.particles.update(dt);
+
+    // Powerup update + collection
+    for (const pu of this.powerups) pu.update(dt);
+    for (const pu of this.powerups) {
+      if (!pu.alive) continue;
+      const dx = this.player.x - pu.x, dy = this.player.y - pu.y;
+      if (Math.sqrt(dx * dx + dy * dy) < 18) {
+        this._applyPowerup(pu);
+        pu.alive = false;
+      }
+    }
+    this.powerups = this.powerups.filter(pu => pu.alive);
 
     if (this.player.hp <= 0) {
       this.player.hp = 0;
