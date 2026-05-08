@@ -40,6 +40,14 @@ const UPGRADE_DEFS = [
 
 const BUBBLE_COLORS = ['#ef5350','#42a5f5','#66bb6a','#ffa726','#ab47bc','#26c6da','#ff7043','#fff176'];
 
+const POWERUP_DEFS = {
+  health_boost: { id: 'health_boost', color: '#ef5350', icon: '♥' },
+  health_regen: { id: 'health_regen', color: '#66bb6a', icon: '↑' },
+  speed_boost:  { id: 'speed_boost',  color: '#fff176', icon: '⚡' },
+  damage_boost: { id: 'damage_boost', color: '#ff7043', icon: '✦' },
+  shield:       { id: 'shield',       color: '#42a5f5', icon: '◈' }
+};
+
 // ─── INPUT HANDLER ────────────────────────────────────────────────────────────────
 class InputHandler {
   constructor(canvas) {
@@ -270,6 +278,44 @@ class Enemy {
     ctx.fillStyle = '#333'; ctx.fillRect(bx, by, bw, 4);
     ctx.fillStyle = this.hp / this.maxHp > 0.5 ? '#66bb6a' : '#ef5350';
     ctx.fillRect(bx, by, bw * (this.hp / this.maxHp), 4);
+    ctx.restore();
+  }
+}
+
+// ─── POWERUP ──────────────────────────────────────────────────────────────────
+class Powerup {
+  constructor(x, y, type) {
+    this.x = x; this.y = y;
+    this.type = type;
+    this.alive = true;
+    this.life = 8.0;
+    this.pulseTimer = 0;
+  }
+
+  update(dt) {
+    this.life -= dt;
+    this.pulseTimer += dt;
+    if (this.life <= 0) this.alive = false;
+  }
+
+  render(ctx) {
+    const def = POWERUP_DEFS[this.type];
+    const alpha = this.life < 2 ? this.life / 2 : 1;
+    const pulse = Math.sin(this.pulseTimer * 4) * 4;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, 14 + pulse, 0, Math.PI * 2);
+    ctx.strokeStyle = def.color; ctx.lineWidth = 2; ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, 12, 0, Math.PI * 2);
+    ctx.fillStyle = def.color + '88'; ctx.fill();
+    ctx.strokeStyle = def.color; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(def.icon, this.x, this.y);
+    ctx.textBaseline = 'alphabetic';
     ctx.restore();
   }
 }
