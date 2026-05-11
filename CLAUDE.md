@@ -41,3 +41,7 @@ wave.js → level.js → ui.js → renderer.js → game.js
 - New levels: add to `LEVEL_DEFINITIONS` in `level.js` using `[col, row]` waypoint arrays (path enters from the left edge, exits right)
 
 **Canvas layout:** 960×792px. Game grid is 20×14 tiles at 48px each (960×672). The bottom 120px is the UI panel.
+
+## Security and privacy checks
+
+When asked for a security or privacy check, use the `security-guard` subagent (`~/.claude/agents/security-guard.md`). It must be read-only, avoid repeated commands, redact any secrets found, and return only prioritized findings.

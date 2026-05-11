@@ -5,3 +5,14 @@ KLC Invoice Generator/credentials.json
 KLC Invoice Generator/token.json
 KLC Invoice Generator/invoices.json
 .superpowers/
+
+# Claude Code
+.claude/settings.json
+.playwright-mcp/
+
+# KLC website (Next.js — untracked; add intentionally when ready to commit)
+KLC-website/
+
+# Credential backstops
+credentials.json
+token.json
