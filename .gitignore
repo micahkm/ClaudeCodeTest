@@ -4,3 +4,4 @@ __pycache__/
 KLC Invoice Generator/credentials.json
 KLC Invoice Generator/token.json
 KLC Invoice Generator/invoices.json
+.superpowers/
