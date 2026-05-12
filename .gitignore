@@ -17,3 +17,7 @@ KLC-website/
 # Credential backstops
 credentials.json
 token.json
+
+# Local business config (contains email — copy from config.example.py)
+KLC\ Invoice\ Generator/config.py
+KLC\ Quote\ Calculator/config.py

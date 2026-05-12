@@ -2,6 +2,8 @@ import json
 import subprocess
 from pathlib import Path
 
+from config import BUSINESS_EMAIL
+
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.colors import HexColor, black
@@ -21,7 +23,7 @@ BUSINESS_INFO = [
     "47-148 Lile Place",
     "Kaneohe, HI 96744",
     "(808) 782-2479",
-    "koolaulasercreations@gmail.com",
+    BUSINESS_EMAIL,
 ]
 PAYABLE_TO = "Ko'olau Laser Creations"
 

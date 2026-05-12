@@ -13,6 +13,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 import datetime
 import os
+from config import BUSINESS_EMAIL
 
 
 # ─── QUOTE LOGIC ─────────────────────────────────────────────────────────────
@@ -121,7 +122,7 @@ def export_pdf(filepath, customer_name, customer_email, job_description,
         Paragraph("Ko'olau Laser Creations", header_style),
         Paragraph("3D Printing · Laser Cutting · Engraving · Design", subheader_style),
         Paragraph("Kaneohe, Oahu, Hawaii", subheader_style),
-        Paragraph("koolaulasercreations@gmail.com", subheader_style),
+        Paragraph(BUSINESS_EMAIL, subheader_style),
     ]
 
     header_table = Table(
