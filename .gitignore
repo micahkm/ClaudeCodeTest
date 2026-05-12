@@ -8,6 +8,7 @@ KLC Invoice Generator/invoices.json
 
 # Claude Code
 .claude/settings.json
+.claude/settings.local.json
 .playwright-mcp/
 
 # KLC website (Next.js — untracked; add intentionally when ready to commit)
