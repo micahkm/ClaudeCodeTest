@@ -41,16 +41,23 @@
 
     h1, h2, h3 { line-height: 1.2; }
 
+    .badges {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 48px;
+      flex-wrap: wrap;
+    }
+
+    .badges-divider {
+      width: 1px;
+      height: 80px;
+      background: var(--navy-border);
+    }
+
     @media (max-width: 600px) {
-      /* Stack badges vertically on small screens */
-      section[style*="gap: 48px"] {
-        flex-direction: column;
-        gap: 32px;
-      }
-      /* Hide the vertical divider on mobile */
-      section[style*="gap: 48px"] > div[style*="width: 1px"] {
-        display: none;
-      }
+      .badges { flex-direction: column; gap: 32px; }
+      .badges-divider { display: none; }
     }
   </style>
 </head>
@@ -91,15 +98,10 @@
   </header>
 
   <!-- BADGES -->
-  <section style="
+  <section class="badges" style="
     background: var(--navy-light);
     padding: 36px 24px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 48px;
     border-bottom: 1px solid var(--navy-border);
-    flex-wrap: wrap;
   ">
     <!-- HPD Badge -->
     <div style="text-align: center;">
@@ -143,7 +145,7 @@
     </div>
 
     <!-- Divider -->
-    <div style="width: 1px; height: 80px; background: var(--navy-border);"></div>
+    <div class="badges-divider"></div>
 
     <!-- HFD Badge -->
     <div style="text-align: center;">
@@ -359,7 +361,7 @@
       letter-spacing: 2px;
       color: var(--text-dim);
       text-transform: uppercase;
-    ">© 2025 The 200 Club of Hawaii &middot; All Rights Reserved</p>
+    ">© 2026 The 200 Club of Hawaii &middot; All Rights Reserved</p>
   </footer>
 
 </body>
